@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Simulator</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 320px; background: white; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; }
+        .main { flex: 1; padding: 30px; }
+        h1 { color: #333; margin-bottom: 20px; font-size: 20px; }
+        h3 { font-size: 14px; margin: 15px 0 10px 0; color: #666; }
+        .control { margin: 12px 0; }
+        label { display: block; font-weight: 500; color: #555; margin-bottom: 3px; font-size: 13px; }
+        input[type="range"] { width: 100%; }
+        input[type="month"] { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
+        .value { font-weight: bold; color: #2196F3; font-size: 14px; display: block; margin-top: 2px; }
+        #chart { width: 100%; height: calc(100vh - 60px); }
+        .reset-btn { width: 100%; padding: 10px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 15px; font-weight: 500; }
+        .reset-btn:hover { background: #d32f2f; }
+        hr { margin: 15px 0; border: 1px solid #e0e0e0; }
+        .copy-notification { position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 20px; border-radius: 5px; display: none; z-index: 1000; }
+        .nav-link { display: inline-block; padding: 8px 15px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; margin-bottom: 15px; }
+        .nav-link:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="copy-notification" class="copy-notification">Copied to clipboard!</div>
+        <div class="sidebar">
+            <h1>📈 Portfolio Simulator</h1>
+            <a href="/custom" class="nav-link">→ Custom Stocks</a>
+            
+            <div class="control">
+                <label>Initial Investment</label>
+                <input type="range" id="initial" min="1000" max="100000" step="1000" value="10000">
+                <span class="value" id="initial-val">$10,000</span>
+            </div>
+            
+            <div class="control">
+                <label>Monthly Additional</label>
+                <input type="range" id="monthly" min="0" max="10000" step="100" value="0">
+                <span class="value" id="monthly-val">$0</span>
+            </div>
+            
+            <div class="control">
+                <label>Rebalance Frequency (months)</label>
+                <input type="range" id="rebalance" min="1" max="12" step="1" value="6">
+                <span class="value" id="rebalance-val">6</span>
+            </div>
+            
+            <hr style="margin: 20px 0; border: 1px solid #ddd;">
+            <h3 style="font-size: 16px; margin-bottom: 15px;">Balanced Portfolio Allocation <span id="total-allocation" style="color: #2196F3;">(100%)</span></h3>
+            
+            <div class="control">
+                <label>BRKB %</label>
+                <input type="range" id="weight-brkb" min="0" max="100" step="1" value="25">
+                <span class="value" id="weight-brkb-val">25%</span>
+            </div>
+            
+            <div class="control">
+                <label>GOLD %</label>
+                <input type="range" id="weight-gold" min="0" max="100" step="1" value="25">
+                <span class="value" id="weight-gold-val">25%</span>
+            </div>
+            
+            <div class="control">
+                <label>QQQ %</label>
+                <input type="range" id="weight-qqq" min="0" max="100" step="1" value="25">
+                <span class="value" id="weight-qqq-val">25%</span>
+            </div>
+            
+            <div class="control">
+                <label>SPY %</label>
+                <input type="range" id="weight-spy" min="0" max="100" step="1" value="25">
+                <span class="value" id="weight-spy-val">25%</span>
+            </div>
+            
+            <div class="control">
+                <label>Debt (3% growth)</label>
+                <span class="value" id="debt-val" style="color: #ff9800;">0%</span>
+            </div>
+            <hr style="margin: 20px 0; border: 1px solid #ddd;">
+            
+            <div class="control">
+                <label>Start Month</label>
+                <input type="range" id="start-slider" min="0" max="{{ all_dates|length - 1 }}" value="0">
+                <span class="value" id="start-val">{{ min_date }}</span>
+            </div>
+            
+            <div class="control">
+                <label>End Month</label>
+                <input type="range" id="end-slider" min="0" max="{{ all_dates|length - 1 }}" value="{{ all_dates|length - 1 }}">
+                <span class="value" id="end-val">{{ max_date }}</span>
+            </div>
+            
+            <button class="reset-btn" onclick="resetAll()">Reset All</button>
+            <button class="reset-btn" onclick="copyDebugInfo()" style="background: #2196F3; margin-top: 10px;">Copy Debug Info</button>
+        </div>
+        
+        <div class="main">
+            <div id="chart"></div>
+        </div>
+    </div>
+    
+    <script>
+        const MIN_DATE = '{{ min_date }}';
+        const MAX_DATE = '{{ max_date }}';
+        const ALL_DATES = {{ all_dates|tojson }};
+        let lastResults = null;
+        let updateTimeout = null;
+        
+        // Load saved state on page load
+        function loadState() {
+            const saved = localStorage.getItem('defaultPortfolioState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                document.getElementById('initial').value = state.initial ?? 10000;
+                document.getElementById('monthly').value = state.monthly ?? 0;
+                document.getElementById('rebalance').value = state.rebalance ?? 6;
+                document.getElementById('start-slider').value = ('startIdx' in state) ? state.startIdx : 0;
+                document.getElementById('end-slider').value = ('endIdx' in state) ? state.endIdx : (ALL_DATES.length - 1);
+                document.getElementById('weight-brkb').value = state.weights?.BRKB ?? 25;
+                document.getElementById('weight-gold').value = state.weights?.GOLD ?? 25;
+                document.getElementById('weight-qqq').value = state.weights?.QQQ ?? 25;
+                document.getElementById('weight-spy').value = state.weights?.SPY ?? 25;
+                updateValues();
+                updateChart();
+            }
+        }
+        
+        // Save state whenever it changes
+        function saveState() {
+            const state = {
+                initial: parseInt(document.getElementById('initial').value),
+                monthly: parseInt(document.getElementById('monthly').value),
+                rebalance: parseInt(document.getElementById('rebalance').value),
+                startIdx: parseInt(document.getElementById('start-slider').value),
+                endIdx: parseInt(document.getElementById('end-slider').value),
+                weights: {
+                    BRKB: parseInt(document.getElementById('weight-brkb').value),
+                    GOLD: parseInt(document.getElementById('weight-gold').value),
+                    QQQ: parseInt(document.getElementById('weight-qqq').value),
+                    SPY: parseInt(document.getElementById('weight-spy').value)
+                }
+            };
+            localStorage.setItem('defaultPortfolioState', JSON.stringify(state));
+        }
+        
+        function formatCurrency(val) {
+            return '$' + val.toLocaleString();
+        }
+        
+        function copyDebugInfo() {
+            const startIdx = parseInt(document.getElementById('start-slider').value);
+            const endIdx = parseInt(document.getElementById('end-slider').value);
+            
+            const debugInfo = {
+                inputs: {
+                    initial: parseInt(document.getElementById('initial').value),
+                    monthly: parseInt(document.getElementById('monthly').value),
+                    rebalance: parseInt(document.getElementById('rebalance').value),
+                    start_date: ALL_DATES[startIdx],
+                    end_date: ALL_DATES[endIdx],
+                    weights: {
+                        BRKB: parseInt(document.getElementById('weight-brkb').value),
+                        GOLD: parseInt(document.getElementById('weight-gold').value),
+                        QQQ: parseInt(document.getElementById('weight-qqq').value),
+                        SPY: parseInt(document.getElementById('weight-spy').value)
+                    }
+                },
+                outputs: lastResults ? Object.fromEntries(
+                    Object.entries(lastResults.results).map(([name, data]) => [
+                        name, 
+                        {
+                            final: Math.round(data.final),
+                            return: data.return.toFixed(2) + '%',
+                            xirr: data.xirr ? data.xirr.toFixed(2) + '%' : 'N/A'
+                        }
+                    ])
+                ) : 'No results yet'
+            };
+            
+            const text = JSON.stringify(debugInfo, null, 2);
+            navigator.clipboard.writeText(text).then(() => {
+                const notification = document.getElementById('copy-notification');
+                notification.style.display = 'block';
+                setTimeout(() => { notification.style.display = 'none'; }, 2000);
+            });
+        }
+        
+        function updateValues() {
+            document.getElementById('initial-val').textContent = formatCurrency(parseInt(document.getElementById('initial').value));
+            document.getElementById('monthly-val').textContent = formatCurrency(parseInt(document.getElementById('monthly').value));
+            document.getElementById('rebalance-val').textContent = document.getElementById('rebalance').value;
+            
+            const startIdx = parseInt(document.getElementById('start-slider').value);
+            const endIdx = parseInt(document.getElementById('end-slider').value);
+            document.getElementById('start-val').textContent = ALL_DATES[startIdx];
+            document.getElementById('end-val').textContent = ALL_DATES[endIdx];
+            
+            // Update weight values
+            const brkb = parseInt(document.getElementById('weight-brkb').value);
+            const gold = parseInt(document.getElementById('weight-gold').value);
+            const qqq = parseInt(document.getElementById('weight-qqq').value);
+            const spy = parseInt(document.getElementById('weight-spy').value);
+            const total = brkb + gold + qqq + spy;
+            const debt = Math.max(0, 100 - total);
+            
+            document.getElementById('weight-brkb-val').textContent = brkb + '%';
+            document.getElementById('weight-gold-val').textContent = gold + '%';
+            document.getElementById('weight-qqq-val').textContent = qqq + '%';
+            document.getElementById('weight-spy-val').textContent = spy + '%';
+            document.getElementById('debt-val').textContent = debt + '%';
+            document.getElementById('total-allocation').textContent = '(' + total + '%)';
+            document.getElementById('total-allocation').style.color = total === 100 ? '#4CAF50' : (total > 100 ? '#f44336' : '#ff9800');
+            
+            saveState();
+        }
+        
+        function resetAll() {
+            document.getElementById('initial').value = 10000;
+            document.getElementById('monthly').value = 0;
+            document.getElementById('rebalance').value = 6;
+            document.getElementById('start-slider').value = 0;
+            document.getElementById('end-slider').value = ALL_DATES.length - 1;
+            document.getElementById('weight-brkb').value = 25;
+            document.getElementById('weight-gold').value = 25;
+            document.getElementById('weight-qqq').value = 25;
+            document.getElementById('weight-spy').value = 25;
+            localStorage.removeItem('defaultPortfolioState');
+            updateValues();
+            updateChart();
+        }
+        
+        function updateChart() {
+            // Clear any pending update
+            if (updateTimeout) {
+                clearTimeout(updateTimeout);
+            }
+            
+            // Wait 300ms after user stops dragging before calculating
+            updateTimeout = setTimeout(() => {
+                const startIdx = parseInt(document.getElementById('start-slider').value);
+                const endIdx = parseInt(document.getElementById('end-slider').value);
+                
+                const data = {
+                    initial: parseInt(document.getElementById('initial').value),
+                    monthly: parseInt(document.getElementById('monthly').value),
+                    rebalance: parseInt(document.getElementById('rebalance').value),
+                    start_date: ALL_DATES[startIdx] + '-01',
+                    end_date: ALL_DATES[endIdx] + '-01',
+                    weights: {
+                        'BRKB': parseInt(document.getElementById('weight-brkb').value),
+                        'GOLD': parseInt(document.getElementById('weight-gold').value),
+                        'QQQ': parseInt(document.getElementById('weight-qqq').value),
+                        'SPY': parseInt(document.getElementById('weight-spy').value)
+                    }
+                };
+                
+                fetch('/calculate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    lastResults = result;
+                    const traces = [];
+                    for (const [name, data] of Object.entries(result.results)) {
+                        const xirrText = data.xirr ? ` | XIRR: ${data.xirr.toFixed(2)}%` : '';
+                        traces.push({
+                            x: result.dates,
+                            y: data.values,
+                            name: `${name}: ${formatCurrency(Math.round(data.final))} (${data.return.toFixed(1)}%)${xirrText}`,
+                            type: 'scatter',
+                            mode: 'lines',
+                            line: {width: 3}
+                        });
+                    }
+                    
+                    const layout = {
+                        title: {
+                            text: 'Portfolio Performance Comparison',
+                            font: {size: 20}
+                        },
+                        xaxis: {title: 'Date', gridcolor: '#e0e0e0'},
+                        yaxis: {title: 'Portfolio Value ($)', gridcolor: '#e0e0e0'},
+                        hovermode: 'x unified',
+                        plot_bgcolor: '#fafafa',
+                        paper_bgcolor: 'white',
+                        margin: {l: 60, r: 30, t: 60, b: 60},
+                        legend: {
+                            x: 0.02,
+                            y: 0.98,
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            bordercolor: '#ddd',
+                            borderwidth: 1
+                        }
+                    };
+                    
+                    Plotly.newPlot('chart', traces, layout, {responsive: true});
+                });
+            }, 300);
+        }
+        
+        document.getElementById('initial').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('monthly').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('rebalance').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('start-slider').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('end-slider').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('weight-brkb').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('weight-gold').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('weight-qqq').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('weight-spy').addEventListener('input', () => { updateValues(); updateChart(); });
+        
+        // Load saved state on page load
+        loadState();
+        if (!localStorage.getItem('defaultPortfolioState')) {
+            updateValues();
+            updateChart();
+        }
+    </script>
+</body>
+</html>

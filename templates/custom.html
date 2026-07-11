@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Custom Portfolio Simulator</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 320px; background: white; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; }
+        .main { flex: 1; padding: 30px; }
+        h1 { color: #333; margin-bottom: 20px; font-size: 20px; }
+        h3 { font-size: 14px; margin: 15px 0 10px 0; color: #666; }
+        .control { margin: 12px 0; }
+        label { display: block; font-weight: 500; color: #555; margin-bottom: 3px; font-size: 13px; }
+        input[type="range"] { width: 100%; }
+        input[type="month"] { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
+        .value { font-weight: bold; color: #2196F3; font-size: 14px; display: block; margin-top: 2px; }
+        #chart { width: 100%; height: calc(100vh - 60px); }
+        .reset-btn { width: 100%; padding: 10px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 15px; font-weight: 500; }
+        .reset-btn:hover { background: #d32f2f; }
+        hr { margin: 15px 0; border: 1px solid #e0e0e0; }
+        .copy-notification { position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 20px; border-radius: 5px; display: none; z-index: 1000; }
+        .nav-link { display: inline-block; padding: 8px 15px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; margin-bottom: 15px; }
+        .nav-link:hover { background: #1976D2; }
+        select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; max-height: 200px; }
+        input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; margin-bottom: 5px; }
+        .add-btn { width: 100%; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 5px; }
+        .add-btn:hover { background: #45a049; }
+        .add-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .stock-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+        .remove-btn { background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        .remove-btn:hover { background: #d32f2f; }
+        .limit-warning { color: #ff9800; font-size: 11px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="copy-notification" class="copy-notification">Copied to clipboard!</div>
+        <div class="sidebar">
+            <a href="/" class="nav-link">← Back to Default</a>
+            <h1>📊 Custom Portfolio</h1>
+            
+            <div class="control">
+                <label>Add Stock (Max 10)</label>
+                <input type="text" id="stock-search" placeholder="Search stocks..." oninput="filterStocks()">
+                <select id="stock-select" size="8" multiple style="display: none;">
+                </select>
+                <button class="add-btn" id="add-btn" onclick="addStocks()">Add Selected</button>
+                <div class="limit-warning" id="limit-warning" style="display: none;">Maximum 10 stocks allowed</div>
+            </div>
+            
+            <hr>
+            <h3>Selected Stocks</h3>
+            <div id="selected-stocks"></div>
+            
+            <hr>
+            <h3>Comparisons</h3>
+            <div class="control">
+                <label><input type="checkbox" id="compare-spy" onchange="updateChart()"> Compare to SPY</label>
+            </div>
+            <div class="control">
+                <label><input type="checkbox" id="compare-qqq" onchange="updateChart()"> Compare to QQQ</label>
+            </div>
+            
+            <hr>
+            
+            <div class="control">
+                <label>Initial Investment</label>
+                <input type="range" id="initial" min="1000" max="100000" step="1000" value="10000">
+                <span class="value" id="initial-val">$10,000</span>
+            </div>
+            
+            <div class="control">
+                <label>Monthly Additional</label>
+                <input type="range" id="monthly" min="0" max="10000" step="100" value="0">
+                <span class="value" id="monthly-val">$0</span>
+            </div>
+            
+            <div class="control">
+                <label>Rebalance Frequency (months)</label>
+                <input type="range" id="rebalance" min="1" max="12" step="1" value="6">
+                <span class="value" id="rebalance-val">6</span>
+            </div>
+            
+            <hr>
+            <h3>Allocation <span id="total-allocation" style="color: #2196F3;">(0%)</span></h3>
+            <div id="weight-controls"></div>
+            <div class="control">
+                <label>Debt (3% growth)</label>
+                <span class="value" id="debt-val" style="color: #ff9800;">100%</span>
+            </div>
+            
+            <hr>
+            
+            <div class="control">
+                <label>Start Month</label>
+                <input type="range" id="start-slider" min="0" max="{{ all_dates|length - 1 }}" value="0">
+                <span class="value" id="start-val">{{ min_date }}</span>
+            </div>
+            
+            <div class="control">
+                <label>End Month</label>
+                <input type="range" id="end-slider" min="0" max="{{ all_dates|length - 1 }}" value="{{ all_dates|length - 1 }}">
+                <span class="value" id="end-val">{{ max_date }}</span>
+            </div>
+            
+            <button class="reset-btn" onclick="resetAll()">Reset All</button>
+            <button class="reset-btn" onclick="copyDebugInfo()" style="background: #2196F3; margin-top: 10px;">Copy Debug Info</button>
+        </div>
+        
+        <div class="main">
+            <div id="chart"></div>
+        </div>
+    </div>
+    
+    <script>
+        const MIN_DATE = '{{ min_date }}';
+        const MAX_DATE = '{{ max_date }}';
+        const ALL_DATES = {{ all_dates|tojson }};
+        const ALL_TICKERS = {{ tickers|tojson }};
+        let lastResults = null;
+        let updateTimeout = null;
+        let selectedStocks = [];
+        const MAX_STOCKS = 10;
+        
+        // Load saved state on page load
+        function loadState() {
+            const saved = localStorage.getItem('customPortfolioState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                selectedStocks = state.stocks || [];
+                document.getElementById('initial').value = state.initial ?? 10000;
+                document.getElementById('monthly').value = state.monthly ?? 0;
+                document.getElementById('rebalance').value = state.rebalance ?? 6;
+                document.getElementById('start-slider').value = ('startIdx' in state) ? state.startIdx : 0;
+                document.getElementById('end-slider').value = ('endIdx' in state) ? state.endIdx : (ALL_DATES.length - 1);
+                document.getElementById('compare-spy').checked = state.compareSpy ?? false;
+                document.getElementById('compare-qqq').checked = state.compareQqq ?? false;
+                
+                renderStocks();
+                
+                // Restore weights
+                if (state.weights) {
+                    setTimeout(() => {
+                        Object.entries(state.weights).forEach(([ticker, weight]) => {
+                            const el = document.getElementById(`weight-${ticker}`);
+                            if (el) el.value = weight;
+                        });
+                        updateValues();
+                        updateChart();
+                    }, 100);
+                } else {
+                    updateValues();
+                    updateChart();
+                }
+            }
+        }
+        
+        // Save state whenever it changes
+        function saveState() {
+            const weights = {};
+            selectedStocks.forEach(ticker => {
+                const el = document.getElementById(`weight-${ticker}`);
+                if (el) weights[ticker] = parseInt(el.value);
+            });
+            
+            const state = {
+                stocks: selectedStocks,
+                initial: parseInt(document.getElementById('initial').value),
+                monthly: parseInt(document.getElementById('monthly').value),
+                rebalance: parseInt(document.getElementById('rebalance').value),
+                startIdx: parseInt(document.getElementById('start-slider').value),
+                endIdx: parseInt(document.getElementById('end-slider').value),
+                compareSpy: document.getElementById('compare-spy').checked,
+                compareQqq: document.getElementById('compare-qqq').checked,
+                weights: weights
+            };
+            localStorage.setItem('customPortfolioState', JSON.stringify(state));
+        }
+        
+        function filterStocks() {
+            const search = document.getElementById('stock-search').value.toUpperCase().trim();
+            const select = document.getElementById('stock-select');
+            select.innerHTML = '';
+            
+            if (search.length === 0) {
+                select.style.display = 'none';
+                return;
+            }
+            
+            const filtered = ALL_TICKERS.filter(t => t.includes(search));
+            
+            if (filtered.length === 0) {
+                select.style.display = 'none';
+                return;
+            }
+            
+            select.style.display = 'block';
+            filtered.slice(0, 20).forEach(ticker => {
+                const option = document.createElement('option');
+                option.value = ticker;
+                option.textContent = ticker;
+                select.appendChild(option);
+            });
+        }
+        
+        function addStocks() {
+            if (selectedStocks.length >= MAX_STOCKS) {
+                document.getElementById('limit-warning').style.display = 'block';
+                return;
+            }
+            
+            const select = document.getElementById('stock-select');
+            const selected = Array.from(select.selectedOptions).map(opt => opt.value);
+            
+            for (const ticker of selected) {
+                if (selectedStocks.length >= MAX_STOCKS) {
+                    document.getElementById('limit-warning').style.display = 'block';
+                    break;
+                }
+                if (!selectedStocks.includes(ticker)) {
+                    selectedStocks.push(ticker);
+                }
+            }
+            
+            document.getElementById('stock-search').value = '';
+            filterStocks();
+            renderStocks();
+            saveState();
+            updateChart();
+        }
+        
+        function removeStock(ticker) {
+            selectedStocks = selectedStocks.filter(t => t !== ticker);
+            document.getElementById('limit-warning').style.display = 'none';
+            renderStocks();
+            saveState();
+            updateChart();
+        }
+        
+        function renderStocks() {
+            const container = document.getElementById('selected-stocks');
+            const weightsContainer = document.getElementById('weight-controls');
+            const addBtn = document.getElementById('add-btn');
+            
+            // Update button state
+            addBtn.disabled = selectedStocks.length >= MAX_STOCKS;
+            
+            if (selectedStocks.length === 0) {
+                container.innerHTML = '<p style="color: #999; font-size: 12px;">No stocks selected</p>';
+                weightsContainer.innerHTML = '';
+                updateTotalAllocation();
+                return;
+            }
+            
+            container.innerHTML = selectedStocks.map(ticker => 
+                `<div class="stock-item">
+                    <span>${ticker}</span>
+                    <button class="remove-btn" onclick="removeStock('${ticker}')">Remove</button>
+                </div>`
+            ).join('');
+            
+            const equalWeight = Math.floor(100 / selectedStocks.length);
+            weightsContainer.innerHTML = selectedStocks.map(ticker => 
+                `<div class="control">
+                    <label>${ticker} %</label>
+                    <input type="range" id="weight-${ticker}" min="0" max="100" step="1" value="${equalWeight}" oninput="updateValues(); updateChart();">
+                    <span class="value" id="weight-${ticker}-val">${equalWeight}%</span>
+                </div>`
+            ).join('');
+            
+            // Auto-adjust date range to where all stocks have data
+            adjustDateRange();
+            updateValues();
+        }
+        
+        function adjustDateRange() {
+            if (selectedStocks.length === 0) return;
+            
+            // Fetch data availability for selected stocks
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    initial: 10000,
+                    monthly: 0,
+                    rebalance: 6,
+                    start_date: ALL_DATES[0] + '-01',
+                    end_date: ALL_DATES[ALL_DATES.length - 1] + '-01',
+                    weights: Object.fromEntries(selectedStocks.map(t => [t, 1]))
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.dates && result.dates.length > 0) {
+                    // Find the first date where all stocks have data
+                    const firstValidDate = result.dates[0].substring(0, 7); // YYYY-MM
+                    const startIdx = ALL_DATES.indexOf(firstValidDate);
+                    if (startIdx !== -1) {
+                        document.getElementById('start-slider').value = startIdx;
+                        updateValues();
+                    }
+                }
+            });
+        }
+        
+        function formatCurrency(val) {
+            return '$' + val.toLocaleString();
+        }
+        
+        function updateTotalAllocation() {
+            let total = 0;
+            selectedStocks.forEach(ticker => {
+                const el = document.getElementById(`weight-${ticker}`);
+                if (el) total += parseInt(el.value);
+            });
+            
+            const debt = Math.max(0, 100 - total);
+            document.getElementById('debt-val').textContent = debt + '%';
+            document.getElementById('total-allocation').textContent = '(' + total + '%)';
+            document.getElementById('total-allocation').style.color = total === 100 ? '#4CAF50' : (total > 100 ? '#f44336' : '#ff9800');
+        }
+        
+        function copyDebugInfo() {
+            const startIdx = parseInt(document.getElementById('start-slider').value);
+            const endIdx = parseInt(document.getElementById('end-slider').value);
+            
+            const weights = {};
+            selectedStocks.forEach(ticker => {
+                const el = document.getElementById(`weight-${ticker}`);
+                if (el) weights[ticker] = parseInt(el.value);
+            });
+            
+            const debugInfo = {
+                inputs: {
+                    initial: parseInt(document.getElementById('initial').value),
+                    monthly: parseInt(document.getElementById('monthly').value),
+                    rebalance: parseInt(document.getElementById('rebalance').value),
+                    start_date: ALL_DATES[startIdx],
+                    end_date: ALL_DATES[endIdx],
+                    stocks: selectedStocks,
+                    weights: weights
+                },
+                outputs: lastResults ? Object.fromEntries(
+                    Object.entries(lastResults.results).map(([name, data]) => [
+                        name, 
+                        {
+                            final: Math.round(data.final),
+                            return: data.return.toFixed(2) + '%',
+                            xirr: data.xirr ? data.xirr.toFixed(2) + '%' : 'N/A'
+                        }
+                    ])
+                ) : 'No results yet'
+            };
+            
+            const text = JSON.stringify(debugInfo, null, 2);
+            navigator.clipboard.writeText(text).then(() => {
+                const notification = document.getElementById('copy-notification');
+                notification.style.display = 'block';
+                setTimeout(() => { notification.style.display = 'none'; }, 2000);
+            });
+        }
+        
+        function updateValues() {
+            document.getElementById('initial-val').textContent = formatCurrency(parseInt(document.getElementById('initial').value));
+            document.getElementById('monthly-val').textContent = formatCurrency(parseInt(document.getElementById('monthly').value));
+            document.getElementById('rebalance-val').textContent = document.getElementById('rebalance').value;
+            
+            const startIdx = parseInt(document.getElementById('start-slider').value);
+            const endIdx = parseInt(document.getElementById('end-slider').value);
+            document.getElementById('start-val').textContent = ALL_DATES[startIdx];
+            document.getElementById('end-val').textContent = ALL_DATES[endIdx];
+            
+            selectedStocks.forEach(ticker => {
+                const el = document.getElementById(`weight-${ticker}`);
+                const valEl = document.getElementById(`weight-${ticker}-val`);
+                if (el && valEl) {
+                    valEl.textContent = el.value + '%';
+                }
+            });
+            
+            updateTotalAllocation();
+            saveState();
+            
+            updateTotalAllocation();
+        }
+        
+        function resetAll() {
+            document.getElementById('initial').value = 10000;
+            document.getElementById('monthly').value = 0;
+            document.getElementById('rebalance').value = 6;
+            document.getElementById('start-slider').value = 0;
+            document.getElementById('end-slider').value = ALL_DATES.length - 1;
+            document.getElementById('compare-spy').checked = false;
+            document.getElementById('compare-qqq').checked = false;
+            selectedStocks = [];
+            localStorage.removeItem('customPortfolioState');
+            renderStocks();
+            updateValues();
+        }
+        
+        function updateChart() {
+            if (selectedStocks.length === 0) {
+                Plotly.newPlot('chart', [], {
+                    title: 'Select stocks to begin',
+                    xaxis: {title: 'Date'},
+                    yaxis: {title: 'Portfolio Value ($)'}
+                });
+                saveState();
+                return;
+            }
+            
+            if (updateTimeout) clearTimeout(updateTimeout);
+            
+            updateTimeout = setTimeout(() => {
+                const startIdx = parseInt(document.getElementById('start-slider').value);
+                const endIdx = parseInt(document.getElementById('end-slider').value);
+                
+                const weights = {};
+                selectedStocks.forEach(ticker => {
+                    const el = document.getElementById(`weight-${ticker}`);
+                    if (el) weights[ticker] = parseInt(el.value);
+                });
+                
+                // Add SPY and QQQ with 0 weight if comparison is enabled
+                if (document.getElementById('compare-spy').checked) {
+                    weights['SPY'] = 0;
+                }
+                if (document.getElementById('compare-qqq').checked) {
+                    weights['QQQ'] = 0;
+                }
+                
+                const data = {
+                    initial: parseInt(document.getElementById('initial').value),
+                    monthly: parseInt(document.getElementById('monthly').value),
+                    rebalance: parseInt(document.getElementById('rebalance').value),
+                    start_date: ALL_DATES[startIdx] + '-01',
+                    end_date: ALL_DATES[endIdx] + '-01',
+                    weights: weights
+                };
+                
+                fetch('/calculate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    lastResults = result;
+                    const traces = [];
+                    for (const [name, data] of Object.entries(result.results)) {
+                        const xirrText = data.xirr ? ` | XIRR: ${data.xirr.toFixed(2)}%` : '';
+                        traces.push({
+                            x: result.dates,
+                            y: data.values,
+                            name: `${name}: ${formatCurrency(Math.round(data.final))} (${data.return.toFixed(1)}%)${xirrText}`,
+                            type: 'scatter',
+                            mode: 'lines',
+                            line: {width: 3}
+                        });
+                    }
+                    
+                    const layout = {
+                        title: {
+                            text: 'Custom Portfolio Performance',
+                            font: {size: 20}
+                        },
+                        xaxis: {title: 'Date', gridcolor: '#e0e0e0'},
+                        yaxis: {title: 'Portfolio Value ($)', gridcolor: '#e0e0e0'},
+                        hovermode: 'x unified',
+                        plot_bgcolor: '#fafafa',
+                        paper_bgcolor: 'white',
+                        margin: {l: 60, r: 30, t: 60, b: 60},
+                        legend: {
+                            x: 0.02,
+                            y: 0.98,
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            bordercolor: '#ddd',
+                            borderwidth: 1
+                        }
+                    };
+                    
+                    Plotly.newPlot('chart', traces, layout, {responsive: true});
+                });
+            }, 300);
+        }
+        
+        document.getElementById('initial').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('monthly').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('rebalance').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('start-slider').addEventListener('input', () => { updateValues(); updateChart(); });
+        document.getElementById('end-slider').addEventListener('input', () => { updateValues(); updateChart(); });
+        
+        // Load saved state on page load
+        loadState();
+        if (selectedStocks.length === 0) {
+            updateValues();
+        }
+    </script>
+</body>
+</html>
