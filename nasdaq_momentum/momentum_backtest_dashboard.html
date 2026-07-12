@@ -224,6 +224,20 @@ function recalculate() {
         }
     }
     
+    // Win/Lose streaks
+    let portWinStreak = 0, portLoseStreak = 0, portCurrWin = 0, portCurrLose = 0;
+    let qqqWinStreak = 0, qqqLoseStreak = 0, qqqCurrWin = 0, qqqCurrLose = 0;
+    for (const r of results) {
+        if (r.portRet > 0) { portCurrWin++; portCurrLose = 0; if (portCurrWin > portWinStreak) portWinStreak = portCurrWin; }
+        else { portCurrLose++; portCurrWin = 0; if (portCurrLose > portLoseStreak) portLoseStreak = portCurrLose; }
+        if (r.qqqRet !== null) {
+            if (r.qqqRet > 0) { qqqCurrWin++; qqqCurrLose = 0; if (qqqCurrWin > qqqWinStreak) qqqWinStreak = qqqCurrWin; }
+            else { qqqCurrLose++; qqqCurrWin = 0; if (qqqCurrLose > qqqLoseStreak) qqqLoseStreak = qqqCurrLose; }
+        }
+    }
+    const portWinRate = results.filter(r => r.portRet > 0).length;
+    const qqqWinRate = results.filter(r => r.qqqRet !== null && r.qqqRet > 0).length;
+    
     // Next month card — show current holdings and top 7
     const lastResult = results[results.length - 1];
     let nextMonthHtml = '';
@@ -268,6 +282,7 @@ function recalculate() {
             <div class="value">$` + portValue.toLocaleString(undefined,{maximumFractionDigits:0}) + `</div>
             <div style="font-size:12px;color:#555;margin-top:4px;">` + portMultiple.toFixed(1) + `x · CAGR ` + (portCAGR*100).toFixed(1) + `% · <span style="color:#dc3545;">Max DD -` + (maxDD*100).toFixed(1) + `%</span></div>
             <div style="font-size:11px;margin-top:3px;"><span style="color:#28a745;">Best: +` + bestPort.ret.toFixed(1) + `% (` + bestPort.period + `)</span> · <span style="color:#dc3545;">Worst: ` + worstPort.ret.toFixed(1) + `% (` + worstPort.period + `)</span></div>
+            <div style="font-size:11px;margin-top:2px;">Win: ` + portWinRate + `/` + numMonths + ` (` + (portWinRate/numMonths*100).toFixed(0) + `%) · <span style="color:#28a745;">Win streak: ` + portWinStreak + `mo</span> · <span style="color:#dc3545;">Lose streak: ` + portLoseStreak + `mo</span></div>
         </div>
         <div class="summary-card s4">
             <div class="label">Momentum + Leverage (2x ETFs when available)</div>
@@ -280,6 +295,7 @@ function recalculate() {
             <div class="value">$` + qqqValue.toLocaleString(undefined,{maximumFractionDigits:0}) + `</div>
             <div style="font-size:12px;color:#555;margin-top:4px;">` + qqqMultiple.toFixed(1) + `x · CAGR ` + (qqqCAGR*100).toFixed(1) + `% · <span style="color:#dc3545;">Max DD -` + (qqqMaxDD*100).toFixed(1) + `%</span></div>
             <div style="font-size:11px;margin-top:3px;"><span style="color:#28a745;">Best: +` + bestQQQ.ret.toFixed(1) + `% (` + bestQQQ.period + `)</span> · <span style="color:#dc3545;">Worst: ` + worstQQQ.ret.toFixed(1) + `% (` + worstQQQ.period + `)</span></div>
+            <div style="font-size:11px;margin-top:2px;">Win: ` + qqqWinRate + `/` + numMonths + ` (` + (qqqWinRate/numMonths*100).toFixed(0) + `%) · <span style="color:#28a745;">Win streak: ` + qqqWinStreak + `mo</span> · <span style="color:#dc3545;">Lose streak: ` + qqqLoseStreak + `mo</span></div>
         </div>
     </div>`;
     
