@@ -106,7 +106,7 @@ tr:hover {{ background: #e9ecef !important; }}
 .tag-new {{ background: #cce5ff; color: #004085; }}
 .tag-exit {{ background: #f8d7da; color: #721c24; }}
 #tableContainer {{ max-height: 600px; overflow-y: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
-#yearlyChartContainer {{ background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 250px; }}
+#yearlyChartContainer {{ background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: 350px; }}
 #stockStats {{ background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
 #stockStats h4 {{ margin: 0 0 10px 0; color: #333; }}
 .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }}
@@ -445,7 +445,7 @@ function recalculate() {{
         plugins: [{{
             afterDatasetsDraw(chart) {{
                 const ctx = chart.ctx;
-                ctx.font = '9px sans-serif';
+                ctx.font = '7px sans-serif';
                 ctx.textAlign = 'center';
                 chart.data.datasets.forEach((dataset, i) => {{
                     const meta = chart.getDatasetMeta(i);
@@ -454,7 +454,7 @@ function recalculate() {{
                         if (value === undefined || value === null) return;
                         const label = value.toFixed(0) + '%';
                         ctx.fillStyle = '#333';
-                        const y = value >= 0 ? bar.y - 4 : bar.y + 12;
+                        const y = value >= 0 ? bar.y - 2 : bar.y + 9;
                         ctx.fillText(label, bar.x, y);
                     }});
                 }});
