@@ -16,6 +16,7 @@ import argparse
 import pandas as pd
 import json
 from pathlib import Path
+from universe_config import get_config, UNIVERSE_CONFIGS
 
 NORGATE_DIR = Path.home() / "Documents" / "workspace" / "historical-index-universe-data"
 PRICES_DIR = NORGATE_DIR / "prices"
@@ -133,7 +134,7 @@ def generate_dashboard(universe_name):
     # Determine start date for the input
     start_month = data[0]["start"][:7]
 
-    html_content = _build_html(data, label, start_month)
+    html_content = _build_html(data, label, start_month, config=get_config(universe_name))
 
     output_file = dashboard_dir / "dashboard.html"
     with open(output_file, "w") as f:
@@ -146,11 +147,36 @@ def generate_dashboard(universe_name):
 from dashboard_template import TEMPLATE_BEFORE, TEMPLATE_AFTER
 
 
-def _build_html(data, label, start_month):
-    """Build HTML dashboard using the full-featured template (same as NASDAQ-100 benchmark)."""
+def _build_html(data, label, start_month, config=None):
+    """Build HTML dashboard using the full-featured template."""
     data_json = json.dumps(data)
-    tpl_before = TEMPLATE_BEFORE.replace("{{TITLE}}", label).replace("{{LABEL}}", label).replace("{{START_MONTH}}", start_month)
-    return tpl_before + data_json + TEMPLATE_AFTER
+    
+    # Build subtitle from config
+    if config:
+        top_n = config.get("top_n", 3)
+        entry = config.get("entry_rank", 3)
+        exit_r = config.get("exit_rank", 7)
+        gold_idx = config.get("gold_signal_index", "$NDX")
+        gold_thresh = config.get("gold_threshold", 7.0)
+        benchmark = config.get("benchmark", "$NDX")
+        subtitle = f"Monthly rebalance · Top {top_n} · Buffer {entry}/{exit_r} · Equal weight · Gold when {gold_idx}/XAUUSD ≥ {gold_thresh}"
+        benchmark_label = benchmark
+    else:
+        subtitle = "Monthly rebalance · Buffer 3/7 · Equal weight"
+        benchmark_label = "Benchmark"
+    
+    tpl_before = (TEMPLATE_BEFORE
+        .replace("{{TITLE}}", label)
+        .replace("{{LABEL}}", label)
+        .replace("{{START_MONTH}}", start_month)
+        .replace("{{SUBTITLE}}", subtitle)
+        .replace("{{BENCHMARK_LABEL}}", benchmark_label)
+        .replace("{{UNIVERSE_LABEL}}", label)
+    )
+    
+    tpl_after = TEMPLATE_AFTER.replace("{{BENCHMARK_LABEL}}", benchmark_label)
+    
+    return tpl_before + data_json + tpl_after
 
 
 def main():

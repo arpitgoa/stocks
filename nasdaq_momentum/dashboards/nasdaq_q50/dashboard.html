@@ -51,7 +51,7 @@ tr:hover { background: #e9ecef !important; }
 </div>
 <div style="font-size:13px;line-height:1.7;color:#333;">
 <h3>1. Universe</h3>
-<p>NASDAQ-100 constituents (point-in-time, verified yearly membership).</p>
+<p>NASDAQ Q-50 constituents (point-in-time).</p>
 
 <h3>2. Momentum Score Calculation</h3>
 <p>For each stock, calculate the <strong>Normalized Momentum Score</strong>:</p>
@@ -109,7 +109,7 @@ tr:hover { background: #e9ecef !important; }
 </div>
 </div>
 <h1>NASDAQ Q-50 Momentum Strategy <button onclick="document.getElementById('infoModal').style.display='flex'" style="background:#6c757d;color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;vertical-align:middle;">i</button></h1>
-<h3>Monthly membership (3/7 buffer) · Equal weight · 6-mo weight reset · 5-day skip · GLD when QQQ/GLD ≥ 2.0</h3>
+<h3>Monthly rebalance · Top 3 · Buffer 3/7 · Equal weight · Gold when $NDX/XAUUSD ≥ 7.0</h3>
 
 <div class="controls">
 <div><label>Initial ($):</label> <input type="number" id="initialAmt" value="100000" min="0" step="10000" style="width:100px;"></div>
@@ -291,7 +291,7 @@ function recalculate() {
             <div style="font-size:11px;margin-top:3px;"><span style="color:#28a745;">Best: +` + bestLev.ret.toFixed(1) + `% (` + bestLev.period + `)</span> · <span style="color:#dc3545;">Worst: ` + worstLev.ret.toFixed(1) + `% (` + worstLev.period + `)</span></div>
         </div>
         <div class="summary-card s2">
-            <div class="label">QQQ Buy & Hold</div>
+            <div class="label">$NXTQ Buy & Hold</div>
             <div class="value">$` + qqqValue.toLocaleString(undefined,{maximumFractionDigits:0}) + `</div>
             <div style="font-size:12px;color:#555;margin-top:4px;">` + qqqMultiple.toFixed(1) + `x · CAGR ` + (qqqCAGR*100).toFixed(1) + `% · <span style="color:#dc3545;">Max DD -` + (qqqMaxDD*100).toFixed(1) + `%</span></div>
             <div style="font-size:11px;margin-top:3px;"><span style="color:#28a745;">Best: +` + bestQQQ.ret.toFixed(1) + `% (` + bestQQQ.period + `)</span> · <span style="color:#dc3545;">Worst: ` + worstQQQ.ret.toFixed(1) + `% (` + worstQQQ.period + `)</span></div>
@@ -314,7 +314,7 @@ function recalculate() {
             datasets: [
                 { label: 'Momentum Strategy', data: portData, borderColor: '#1f77b4', borderWidth: 1.5, pointRadius: 0, fill: false },
                 { label: 'Momentum + Leverage', data: levData, borderColor: '#9c27b0', borderWidth: 1.5, pointRadius: 0, fill: false },
-                { label: 'QQQ Buy & Hold', data: qqqData, borderColor: '#ff7f0e', borderWidth: 1.5, pointRadius: 0, fill: false },
+                { label: '$NXTQ Buy & Hold', data: qqqData, borderColor: '#ff7f0e', borderWidth: 1.5, pointRadius: 0, fill: false },
                 { label: 'Total Invested', data: investedData, borderColor: '#999', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false },
             ]
         },
@@ -355,7 +355,7 @@ function recalculate() {
             datasets: [
                 { label: 'Momentum', data: yearPortRets, backgroundColor: yearPortRets.map(v => v >= 0 ? '#1f77b4' : '#aec7e8') },
                 { label: 'Momentum(lev)', data: yearLevRets, backgroundColor: yearLevRets.map(v => v >= 0 ? '#9c27b0' : '#ce93d8') },
-                { label: 'QQQ', data: yearQQQRets, backgroundColor: yearQQQRets.map(v => v >= 0 ? '#ff7f0e' : '#ffbb78') },
+                { label: '$NXTQ', data: yearQQQRets, backgroundColor: yearQQQRets.map(v => v >= 0 ? '#ff7f0e' : '#ffbb78') },
             ]
         },
         options: {
