@@ -16,3 +16,5 @@ frontend/dist/
 *.log
 
 nasdaq_momentum/precomputed_momentum.parquet
+nasdaq_momentum/all_prices.parquet
+nasdaq_momentum/*.parquet

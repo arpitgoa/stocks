@@ -24,6 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from scipy.optimize import brentq
 from universe_config import UNIVERSE_CONFIGS, get_config, list_universes
+from leveraged_config import LEVERAGED_ETF_MAP
 
 
 # ============================================================
@@ -45,10 +46,26 @@ UNIVERSES = UNIVERSE_CONFIGS
 
 _price_file_map = None
 _membership_cache = {}
+_all_prices_cache = None
+
+PRICES_PARQUET = Path(__file__).parent / "all_prices.parquet"
+
+
+def _load_all_prices_parquet():
+    """Load the combined prices parquet (cached)."""
+    global _all_prices_cache
+    if _all_prices_cache is None:
+        if PRICES_PARQUET.exists():
+            print(f"  Loading prices from parquet ({PRICES_PARQUET.stat().st_size // 1024 // 1024} MB)...")
+            _all_prices_cache = pd.read_parquet(PRICES_PARQUET)
+            print(f"  Loaded: {_all_prices_cache.shape[0]} days × {_all_prices_cache.shape[1]} tickers")
+        else:
+            return None
+    return _all_prices_cache
 
 
 def _get_price_file_map():
-    """Build a map of symbol -> file path (cached)."""
+    """Build a map of symbol -> file path (cached). Fallback if no parquet."""
     global _price_file_map
     if _price_file_map is None:
         _price_file_map = {f.stem.split("__")[0]: f for f in PRICES_DIR.glob("*.csv")}
@@ -57,14 +74,48 @@ def _get_price_file_map():
 
 
 def load_prices_for_universe(universe_folder, config):
-    """Load only the prices needed for a specific universe."""
-    file_map = _get_price_file_map()
+    """Load prices for a specific universe. Uses parquet if available, else CSVs."""
 
-    # Get all tickers ever in this universe
+    # Try parquet first (fast path)
+    all_prices = _load_all_prices_parquet()
+    if all_prices is not None:
+        # Get tickers needed for this universe
+        membership = load_membership(universe_folder)
+        universe_tickers = set(membership["Symbol"].unique())
+
+        extra_tickers = {"XAUUSD"}
+        extra_tickers.add(config.get("gold_signal_index", "$NDX"))
+        extra_tickers.add(config.get("benchmark", ""))
+        extra_tickers.add(config.get("benchmark_etf", ""))
+        extra_tickers.discard("")
+
+        # Add leveraged ETF tickers
+        lev_tickers = set(LEVERAGED_ETF_MAP.values())
+
+        all_needed = universe_tickers | extra_tickers | lev_tickers
+        # Filter to columns that exist
+        available = [t for t in all_needed if t in all_prices.columns]
+        prices = all_prices[available].copy()
+        print(f"  Filtered: {len(available)} tickers for {universe_folder}")
+
+        # Load leveraged ETF prices from yfinance CSV if not in parquet
+        lev_csv = Path(__file__).parent / "nasdaq100_daily_closes.csv"
+        if lev_csv.exists():
+            missing_lev = [t for t in lev_tickers if t not in prices.columns]
+            if missing_lev:
+                lev_df = pd.read_csv(lev_csv, index_col="Date", parse_dates=True)
+                for ticker in missing_lev:
+                    if ticker in lev_df.columns:
+                        prices[ticker] = lev_df[ticker]
+                print(f"  Added {sum(1 for t in missing_lev if t in prices.columns)} leveraged ETFs from yfinance data")
+
+        return prices
+
+    # Fallback: read individual CSVs
+    file_map = _get_price_file_map()
     membership = load_membership(universe_folder)
     universe_tickers = set(membership["Symbol"].unique())
 
-    # Always include XAUUSD for gold rotation
     extra_tickers = {"XAUUSD"}
     extra_tickers.add(config.get("gold_signal_index", "$NDX"))
     extra_tickers.add(config.get("benchmark", ""))
@@ -73,8 +124,7 @@ def load_prices_for_universe(universe_folder, config):
 
     all_tickers = universe_tickers | extra_tickers
 
-    # Load only these tickers
-    print(f"  Loading prices for {len(all_tickers)} tickers ({len(universe_tickers)} in universe)...")
+    print(f"  Loading prices for {len(all_tickers)} tickers from CSVs...")
     all_close = {}
     for ticker in all_tickers:
         if ticker in file_map:
@@ -186,14 +236,8 @@ def calculate_momentum_scores(prices_df, universe_tickers, rebal_date,
                               min_history=252, skip_days=5):
     """
     Calculate Normalized Momentum Score for all eligible tickers.
-    Uses precomputed parquet if available, falls back to live calculation.
+    Uses live calculation from price data (guaranteed accurate).
     """
-    # Try precomputed first
-    precomp = _load_precomputed_scores()
-    if precomp is not None:
-        return _score_from_precomputed(precomp, universe_tickers, rebal_date)
-
-    # Fallback: live calculation from price data
     return _score_from_prices(prices_df, universe_tickers, rebal_date, min_history, skip_days)
 
 
@@ -430,7 +474,7 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
         # Equal weight
         weight = 1.0 / len(new_portfolio) if new_portfolio else 0
 
-        # Calculate returns (base + 1.8x daily-compounded leverage)
+        # Calculate returns (base + leveraged ETF where available)
         hold_period = prices.loc[rebal_date:next_rebal]
         if len(hold_period) < 2:
             portfolio_value += monthly_contribution
@@ -438,10 +482,8 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
             continue
 
         period_ret = 0
-        lev_period_ret_cum = 1.0
         ticker_returns = {}
         lev_ticker_returns = {}
-        leverage = 1.8
 
         for ticker in new_portfolio:
             if ticker in hold_period.columns:
@@ -452,16 +494,19 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
                     period_ret += weight * ticker_ret
                     ticker_returns[ticker] = round(ticker_ret * 100, 2)
 
-                    # Daily-compounded leveraged return
-                    daily_rets = tp.pct_change().dropna()
-                    lev_cum = 1.0
-                    for dr in daily_rets:
-                        lev_cum *= (1 + dr * leverage)
-                    lev_ticker_returns[ticker] = round((lev_cum - 1) * 100, 2)
+                    # Leveraged return: use actual ETF if available, else same as base
+                    lev_ticker = LEVERAGED_ETF_MAP.get(ticker)
+                    if lev_ticker and lev_ticker in hold_period.columns:
+                        lp = hold_period[lev_ticker].dropna()
+                        if len(lp) >= 2:
+                            lev_ret = (lp.iloc[-1] / lp.iloc[0]) - 1
+                            lev_ticker_returns[ticker] = round(lev_ret * 100, 2)
+                            continue
+                    # No leveraged ETF available — use base return
+                    lev_ticker_returns[ticker] = ticker_returns[ticker]
 
-        # Leveraged portfolio return (equal-weighted daily compound)
+        # Leveraged portfolio return (equal-weighted)
         if ticker_returns:
-            # Compute portfolio-level leveraged return
             lev_period_ret = sum(lev_ticker_returns.get(t, 0) for t in new_portfolio) / len(new_portfolio) / 100
         else:
             lev_period_ret = 0
@@ -565,17 +610,16 @@ def _save_wide_csv(universe_name, holdings_history, prices, benchmark_symbol):
         else:
             row["Changes"] = ""
 
-        # Holdings returns
-        hold_period = prices.loc[rebal_date:next_rebal]
+        # Holdings returns (from precomputed in holdings_history)
+        ticker_returns = h.get("Ticker_Returns", {})
+        lev_ticker_returns = h.get("Lev_Ticker_Returns", {})
         for holding in h["Holdings"]:
             ticker = holding["Ticker"]
             weight = holding["Weight"]
-            if ticker in hold_period.columns:
-                tp = hold_period[ticker].dropna()
-                if len(tp) >= 2:
-                    ret = round(((tp.iloc[-1] / tp.iloc[0]) - 1) * 100, 2)
-                    row[f"{ticker}_Pct"] = round(weight * 100, 2)
-                    row[f"{ticker}_Ret"] = ret
+            if ticker in ticker_returns:
+                row[f"{ticker}_Pct"] = round(weight * 100, 2)
+                row[f"{ticker}_Ret"] = ticker_returns[ticker]
+                row[f"{ticker}_LevRet"] = lev_ticker_returns.get(ticker, ticker_returns[ticker])
 
         rows.append(row)
 
