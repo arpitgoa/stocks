@@ -14,3 +14,5 @@ frontend/dist/
 
 # Logs
 *.log
+
+nasdaq_momentum/precomputed_momentum.parquet

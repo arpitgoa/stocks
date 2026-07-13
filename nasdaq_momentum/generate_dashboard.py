@@ -39,15 +39,15 @@ UNIVERSE_LABELS = {
 }
 
 
-def load_bench_prices():
-    """Load price data for computing bench returns."""
-    print("Loading price data for bench returns...")
-    price_files = sorted(PRICES_DIR.glob("*.csv"))
+def load_bench_prices(needed_tickers):
+    """Load price data only for tickers needed for bench returns."""
+    print(f"  Loading prices for {len(needed_tickers)} bench tickers...")
+    file_map = {f.stem.split("__")[0]: f for f in PRICES_DIR.glob("*.csv")}
     all_close = {}
-    for f in price_files:
-        symbol = f.stem.split("__")[0]
-        df = pd.read_csv(f, usecols=["Date", "Close"], index_col="Date", parse_dates=True)
-        all_close[symbol] = df["Close"]
+    for ticker in needed_tickers:
+        if ticker in file_map:
+            df = pd.read_csv(file_map[ticker], usecols=["Date", "Close"], index_col="Date", parse_dates=True)
+            all_close[ticker] = df["Close"]
     prices = pd.DataFrame(all_close).sort_index()
     print(f"  Loaded {prices.shape[1]} tickers")
     return prices
@@ -56,7 +56,8 @@ def load_bench_prices():
 def generate_dashboard(universe_name):
     """Generate HTML dashboard for a universe's backtest results."""
     label = UNIVERSE_LABELS.get(universe_name, universe_name.upper())
-    csv_file = OUTPUT_DIR / f"{universe_name}_backtest_wide.csv"
+    dashboard_dir = OUTPUT_DIR / "dashboards" / universe_name
+    csv_file = dashboard_dir / "backtest_wide.csv"
 
     if not csv_file.exists():
         print(f"Error: {csv_file} not found. Run backtest first:")
@@ -66,8 +67,16 @@ def generate_dashboard(universe_name):
     print(f"Generating dashboard for {label}...")
     df = pd.read_csv(csv_file)
 
-    # Load prices for bench returns
-    prices = load_bench_prices()
+    # Determine which tickers we need prices for (only those in Top10 that aren't held)
+    needed_tickers = set()
+    for top10_str in df["Top10"].dropna():
+        for t in str(top10_str).split(", "):
+            t = t.strip()
+            if t and not t.startswith("GOLD"):
+                needed_tickers.add(t)
+
+    # Load prices only for needed tickers
+    prices = load_bench_prices(needed_tickers)
 
     # Build data for HTML
     data = []
@@ -120,7 +129,7 @@ def generate_dashboard(universe_name):
 
     html_content = _build_html(data, label, start_month)
 
-    output_file = OUTPUT_DIR / f"{universe_name}_momentum_dashboard.html"
+    output_file = dashboard_dir / "dashboard.html"
     with open(output_file, "w") as f:
         f.write(html_content)
 
@@ -344,10 +353,23 @@ recalculate();
 
 def main():
     parser = argparse.ArgumentParser(description="Generate momentum dashboard")
-    parser.add_argument("--universe", type=str, required=True, help="Universe name")
+    parser.add_argument("--universe", type=str, required=False, help="Universe name")
+    parser.add_argument("--all", action="store_true", help="Generate dashboards for all universes with backtest data")
     args = parser.parse_args()
 
-    generate_dashboard(args.universe)
+    if args.all:
+        from universe_config import UNIVERSE_CONFIGS
+        dashboard_base = OUTPUT_DIR / "dashboards"
+        for name in UNIVERSE_CONFIGS:
+            csv_path = dashboard_base / name / "backtest_wide.csv"
+            if csv_path.exists():
+                generate_dashboard(name)
+            else:
+                print(f"  Skipping {name} (no backtest data)")
+    elif args.universe:
+        generate_dashboard(args.universe)
+    else:
+        print("Error: --universe or --all required.")
 
 
 if __name__ == "__main__":

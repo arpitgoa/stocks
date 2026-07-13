@@ -43,31 +43,46 @@ UNIVERSES = UNIVERSE_CONFIGS
 # DATA LOADING
 # ============================================================
 
-_prices_cache = None
+_price_file_map = None
 _membership_cache = {}
 
 
-def load_prices():
-    """Load all Norgate price CSVs into a single Close price DataFrame."""
-    global _prices_cache
-    if _prices_cache is not None:
-        return _prices_cache
+def _get_price_file_map():
+    """Build a map of symbol -> file path (cached)."""
+    global _price_file_map
+    if _price_file_map is None:
+        _price_file_map = {f.stem.split("__")[0]: f for f in PRICES_DIR.glob("*.csv")}
+        print(f"  Price file index: {len(_price_file_map)} files available")
+    return _price_file_map
 
-    print("Loading Norgate price data...")
-    price_files = sorted(PRICES_DIR.glob("*.csv"))
-    print(f"  Found {len(price_files)} price files")
 
+def load_prices_for_universe(universe_folder, config):
+    """Load only the prices needed for a specific universe."""
+    file_map = _get_price_file_map()
+
+    # Get all tickers ever in this universe
+    membership = load_membership(universe_folder)
+    universe_tickers = set(membership["Symbol"].unique())
+
+    # Always include XAUUSD for gold rotation
+    extra_tickers = {"XAUUSD"}
+    extra_tickers.add(config.get("gold_signal_index", "$NDX"))
+    extra_tickers.add(config.get("benchmark", ""))
+    extra_tickers.add(config.get("benchmark_etf", ""))
+    extra_tickers.discard("")
+
+    all_tickers = universe_tickers | extra_tickers
+
+    # Load only these tickers
+    print(f"  Loading prices for {len(all_tickers)} tickers ({len(universe_tickers)} in universe)...")
     all_close = {}
-    for f in price_files:
-        symbol = f.stem.split("__")[0]
-        df = pd.read_csv(f, usecols=["Date", "Close"], index_col="Date", parse_dates=True)
-        all_close[symbol] = df["Close"]
+    for ticker in all_tickers:
+        if ticker in file_map:
+            df = pd.read_csv(file_map[ticker], usecols=["Date", "Close"], index_col="Date", parse_dates=True)
+            all_close[ticker] = df["Close"]
 
     prices = pd.DataFrame(all_close).sort_index()
-    print(f"  Combined: {prices.shape[0]} days × {prices.shape[1]} tickers")
-    print(f"  Date range: {prices.index[0].date()} to {prices.index[-1].date()}")
-
-    _prices_cache = prices
+    print(f"  Loaded: {len(all_close)} tickers, {prices.shape[0]} days")
     return prices
 
 
@@ -148,13 +163,77 @@ def max_drawdown(values):
 # ============================================================
 # MOMENTUM SCORE CALCULATION
 # ============================================================
+# MOMENTUM SCORING (precomputed parquet)
+# ============================================================
+
+PARQUET_FILE = Path(__file__).parent / "precomputed_momentum.parquet"
+_scores_cache = None
+
+
+def _load_precomputed_scores():
+    """Load the precomputed momentum parquet (cached)."""
+    global _scores_cache
+    if _scores_cache is None:
+        if not PARQUET_FILE.exists():
+            return None
+        print(f"  Loading precomputed scores from parquet...")
+        _scores_cache = pd.read_parquet(PARQUET_FILE)
+        print(f"  Loaded: {len(_scores_cache):,} rows")
+    return _scores_cache
+
 
 def calculate_momentum_scores(prices_df, universe_tickers, rebal_date,
                               min_history=252, skip_days=5):
     """
     Calculate Normalized Momentum Score for all eligible tickers.
-    Same NSE methodology as the NASDAQ-100 strategy.
+    Uses precomputed parquet if available, falls back to live calculation.
     """
+    # Try precomputed first
+    precomp = _load_precomputed_scores()
+    if precomp is not None:
+        return _score_from_precomputed(precomp, universe_tickers, rebal_date)
+
+    # Fallback: live calculation from price data
+    return _score_from_prices(prices_df, universe_tickers, rebal_date, min_history, skip_days)
+
+
+def _score_from_precomputed(scores_df, universe_tickers, rebal_date):
+    """Score stocks using precomputed MR values + Z-scoring per universe."""
+    rebal_ts = pd.Timestamp(rebal_date)
+
+    # Find closest date in precomputed data
+    available_dates = scores_df["Date"].unique()
+    # Find exact or nearest date
+    exact = scores_df[scores_df["Date"] == rebal_ts]
+    if exact.empty:
+        # Find nearest date within 5 days
+        diffs = abs(pd.to_datetime(available_dates) - rebal_ts)
+        nearest_idx = diffs.argmin()
+        if diffs[nearest_idx].days > 5:
+            return pd.DataFrame()
+        rebal_ts = pd.Timestamp(available_dates[nearest_idx])
+        exact = scores_df[scores_df["Date"] == rebal_ts]
+
+    # Filter to universe members
+    universe = exact[exact["Ticker"].isin(universe_tickers)].copy()
+    if len(universe) < 3:
+        return pd.DataFrame()
+
+    # Z-score within universe (same logic as live)
+    universe["Z_12"] = (universe["MR_12"] - universe["MR_12"].mean()) / universe["MR_12"].std()
+    universe["Z_6"] = (universe["MR_6"] - universe["MR_6"].mean()) / universe["MR_6"].std()
+    universe["Weighted_Z"] = 0.5 * universe["Z_12"] + 0.5 * universe["Z_6"]
+    universe["Momentum_Score"] = universe["Weighted_Z"].apply(
+        lambda z: (1 + z) if z >= 0 else 1 / (1 - z)
+    )
+
+    universe = universe.sort_values("Momentum_Score", ascending=False).reset_index(drop=True)
+    return universe[["Ticker", "MR_12", "MR_6", "Momentum_Score"]]
+
+
+def _score_from_prices(prices_df, universe_tickers, rebal_date,
+                       min_history=252, skip_days=5):
+    """Fallback: Calculate momentum scores from raw price data."""
     results = []
 
     for ticker in universe_tickers:
@@ -181,7 +260,6 @@ def calculate_momentum_scores(prices_df, universe_tickers, rebal_date,
         ret_12m = price_end / price_12m - 1
         ret_6m = price_end / price_6m - 1
 
-        # Annualized volatility
         log_rets = np.log(
             ts.iloc[end_idx - 252:end_idx + 1] /
             ts.iloc[end_idx - 252:end_idx + 1].shift(1)
@@ -199,9 +277,6 @@ def calculate_momentum_scores(prices_df, universe_tickers, rebal_date,
 
         results.append({
             "Ticker": ticker,
-            "Return_12M": ret_12m,
-            "Return_6M": ret_6m,
-            "Volatility": vol,
             "MR_12": mr_12,
             "MR_6": mr_6,
         })
@@ -210,17 +285,12 @@ def calculate_momentum_scores(prices_df, universe_tickers, rebal_date,
         return pd.DataFrame()
 
     df = pd.DataFrame(results)
-
-    # Z-scores across universe
     df["Z_12"] = (df["MR_12"] - df["MR_12"].mean()) / df["MR_12"].std()
     df["Z_6"] = (df["MR_6"] - df["MR_6"].mean()) / df["MR_6"].std()
     df["Weighted_Z"] = 0.5 * df["Z_12"] + 0.5 * df["Z_6"]
-
-    # Normalized score
     df["Momentum_Score"] = df["Weighted_Z"].apply(
         lambda z: (1 + z) if z >= 0 else 1 / (1 - z)
     )
-
     df = df.sort_values("Momentum_Score", ascending=False).reset_index(drop=True)
     return df
 
@@ -251,21 +321,7 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
     benchmark_etf = config.get("benchmark_etf", None)
     gold_signal_index = config.get("gold_signal_index", "$NDX")
 
-    prices = load_prices()
-
-    # Ensure we have gold signal index and XAUUSD for gold rotation
-    for idx_symbol in [gold_signal_index, "$NDX"]:
-        if idx_symbol not in prices.columns:
-            files = list(PRICES_DIR.glob(f"{idx_symbol}__*.csv"))
-            if files:
-                idx_df = pd.read_csv(files[0], usecols=["Date", "Close"], index_col="Date", parse_dates=True)
-                prices[idx_symbol] = idx_df["Close"]
-
-    if "XAUUSD" not in prices.columns:
-        xau_file = list(PRICES_DIR.glob("XAUUSD__*.csv"))
-        if xau_file:
-            xau_df = pd.read_csv(xau_file[0], usecols=["Date", "Close"], index_col="Date", parse_dates=True)
-            prices["XAUUSD"] = xau_df["Close"]
+    prices = load_prices_for_universe(universe_folder, config)
 
     # Use benchmark ETF as fallback if index not in prices
     if benchmark_symbol not in prices.columns and benchmark_etf and benchmark_etf in prices.columns:
@@ -374,7 +430,7 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
         # Equal weight
         weight = 1.0 / len(new_portfolio) if new_portfolio else 0
 
-        # Calculate return
+        # Calculate returns (base + 1.8x daily-compounded leverage)
         hold_period = prices.loc[rebal_date:next_rebal]
         if len(hold_period) < 2:
             portfolio_value += monthly_contribution
@@ -382,11 +438,33 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
             continue
 
         period_ret = 0
+        lev_period_ret_cum = 1.0
+        ticker_returns = {}
+        lev_ticker_returns = {}
+        leverage = 1.8
+
         for ticker in new_portfolio:
             if ticker in hold_period.columns:
                 tp = hold_period[ticker].dropna()
                 if len(tp) >= 2:
-                    period_ret += weight * ((tp.iloc[-1] / tp.iloc[0]) - 1)
+                    # Base return
+                    ticker_ret = (tp.iloc[-1] / tp.iloc[0]) - 1
+                    period_ret += weight * ticker_ret
+                    ticker_returns[ticker] = round(ticker_ret * 100, 2)
+
+                    # Daily-compounded leveraged return
+                    daily_rets = tp.pct_change().dropna()
+                    lev_cum = 1.0
+                    for dr in daily_rets:
+                        lev_cum *= (1 + dr * leverage)
+                    lev_ticker_returns[ticker] = round((lev_cum - 1) * 100, 2)
+
+        # Leveraged portfolio return (equal-weighted daily compound)
+        if ticker_returns:
+            # Compute portfolio-level leveraged return
+            lev_period_ret = sum(lev_ticker_returns.get(t, 0) for t in new_portfolio) / len(new_portfolio) / 100
+        else:
+            lev_period_ret = 0
 
         portfolio_value *= (1 + period_ret)
         portfolio_value += monthly_contribution
@@ -396,8 +474,11 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
             "Rebal_Date": rebal_date,
             "Next_Rebal": next_rebal,
             "Period_Return": period_ret,
+            "Leveraged_Return": lev_period_ret,
             "Portfolio_Value": portfolio_value,
             "Holdings": [{"Ticker": t, "Weight": weight} for t in sorted(new_portfolio)],
+            "Ticker_Returns": ticker_returns,
+            "Lev_Ticker_Returns": lev_ticker_returns,
             "Trades": trades,
             "Top10": scores.head(10)["Ticker"].tolist(),
             "Removed": removed,
@@ -458,6 +539,7 @@ def _save_wide_csv(universe_name, holdings_history, prices, benchmark_symbol):
             "Portfolio_Start": round(port_start, 2),
             "Portfolio_End": round(h["Portfolio_Value"], 2),
             "Portfolio_Return_Pct": round(h["Period_Return"] * 100, 2),
+            "Leveraged_Return_Pct": round(h.get("Leveraged_Return", h["Period_Return"]) * 100, 2),
         }
 
         # Benchmark return
@@ -497,7 +579,10 @@ def _save_wide_csv(universe_name, holdings_history, prices, benchmark_symbol):
 
         rows.append(row)
 
-    output_file = OUTPUT_DIR / f"{universe_name}_backtest_wide.csv"
+    # Save to dashboards/{universe}/ folder
+    dashboard_dir = OUTPUT_DIR / "dashboards" / universe_name
+    dashboard_dir.mkdir(parents=True, exist_ok=True)
+    output_file = dashboard_dir / "backtest_wide.csv"
     pd.DataFrame(rows).to_csv(output_file, index=False)
     print(f"  Saved: {output_file}")
 
@@ -509,10 +594,11 @@ def _save_wide_csv(universe_name, holdings_history, prices, benchmark_symbol):
 def main():
     parser = argparse.ArgumentParser(description="Universal Momentum Backtest")
     parser.add_argument("--universe", type=str, required=False, help="Universe to backtest")
+    parser.add_argument("--all", action="store_true", help="Run backtest for ALL universes")
     parser.add_argument("--top-n", type=int, default=None, help="Override number of stocks to hold")
     parser.add_argument("--entry-rank", type=int, default=None, help="Override entry rank threshold")
     parser.add_argument("--exit-rank", type=int, default=None, help="Override exit rank threshold")
-    parser.add_argument("--gold-threshold", type=float, default=None, help="Override NDX/XAUUSD threshold")
+    parser.add_argument("--gold-threshold", type=float, default=None, help="Override gold threshold")
     parser.add_argument("--start-year", type=int, default=None, help="Override start year")
     parser.add_argument("--list", action="store_true", help="List available universes")
     parser.add_argument("--dashboard", action="store_true", help="Generate HTML dashboard after backtest")
@@ -522,26 +608,35 @@ def main():
         list_universes()
         return
 
-    if not args.universe:
-        print("Error: --universe required. Use --list to see options.")
+    if args.all:
+        universes_to_run = list(UNIVERSE_CONFIGS.keys())
+    elif args.universe:
+        if args.universe not in UNIVERSE_CONFIGS:
+            print(f"Unknown universe: {args.universe}. Use --list to see options.")
+            return
+        universes_to_run = [args.universe]
+    else:
+        print("Error: --universe or --all required. Use --list to see options.")
         return
 
-    if args.universe not in UNIVERSE_CONFIGS:
-        print(f"Unknown universe: {args.universe}. Use --list to see options.")
-        return
+    for universe_name in universes_to_run:
+        try:
+            run_backtest(
+                universe_name=universe_name,
+                top_n=args.top_n,
+                entry_rank=args.entry_rank,
+                exit_rank=args.exit_rank,
+                ndx_gold_threshold=args.gold_threshold,
+                start_year=args.start_year,
+            )
 
-    run_backtest(
-        universe_name=args.universe,
-        top_n=args.top_n,
-        entry_rank=args.entry_rank,
-        exit_rank=args.exit_rank,
-        ndx_gold_threshold=args.gold_threshold,
-        start_year=args.start_year,
-    )
-
-    if args.dashboard:
-        print("\nGenerating dashboard...")
-        os.system(f"python generate_dashboard.py --universe {args.universe}")
+            if args.dashboard:
+                print("\nGenerating dashboard...")
+                from generate_dashboard import generate_dashboard as gen_dash
+                gen_dash(universe_name)
+        except Exception as e:
+            print(f"\nERROR running {universe_name}: {e}")
+            continue
 
 
 if __name__ == "__main__":

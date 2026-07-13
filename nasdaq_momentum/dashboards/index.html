@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html><head>
+<title>Momentum Strategy - All Universes</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 30px; background: #f8f9fa; }
+h1 { color: #333; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 20px; }
+.card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s; cursor: pointer; text-decoration: none; color: inherit; display: block; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.card h3 { margin: 0 0 8px 0; color: #1f77b4; }
+.card .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.card .stat { }
+.card .stat-label { font-size: 10px; color: #888; text-transform: uppercase; }
+.card .stat-value { font-size: 16px; font-weight: bold; }
+.card .stat-value.green { color: #28a745; }
+.card .stat-value.red { color: #dc3545; }
+.card .stat-value.muted { color: #999; font-size: 13px; }
+.card .period { font-size: 12px; color: #666; }
+.card .config { font-size: 11px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
+.card .alpha { font-size: 11px; margin-top: 6px; }
+.card .alpha .pos { color: #28a745; font-weight: bold; }
+.card .alpha .neg { color: #dc3545; font-weight: bold; }
+</style>
+</head><body>
+<h1>📊 Momentum Strategy — All Universes</h1>
+<p style="color:#666;">Click any card to open the full interactive backtest dashboard. Sorted by CAGR.</p>
+<div class="grid">
+
+    <a class="card" href="nasdaq100/dashboard.html">
+        <h3>NASDAQ-100</h3>
+        <div class="period">32 years · 378 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">36.2%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">16.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+19.3%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">3501x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-46.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">62%</div>
+            </div>
+        </div>
+        <div class="config">Top 3 · Buffer 3/7 · Gold: $NDX/XAUUSD ≥ 7.0 · Bench: $NDX</div>
+    </a>
+
+    <a class="card" href="nasdaq_q50/dashboard.html">
+        <h3>NASDAQ Q-50 (ranks 101-150)</h3>
+        <div class="period">18 years · 222 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">24.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">17.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+7.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">19x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-40.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">59%</div>
+            </div>
+        </div>
+        <div class="config">Top 3 · Buffer 3/7 · Gold: $NDX/XAUUSD ≥ 7.0 · Bench: $NXTQ</div>
+    </a>
+
+    <a class="card" href="russell1000/dashboard.html">
+        <h3>Russell 1000</h3>
+        <div class="period">36 years · 426 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">20.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">11.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+9.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">162x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-50.6%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">61%</div>
+            </div>
+        </div>
+        <div class="config">Top 10 · Buffer 10/20 · Gold: $RUI/XAUUSD ≥ 2.4 · Bench: $RUI</div>
+    </a>
+
+    <a class="card" href="russell_midcap/dashboard.html">
+        <h3>Russell Mid Cap</h3>
+        <div class="period">30 years · 366 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">20.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">12.1%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+8.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">70x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-57.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">62%</div>
+            </div>
+        </div>
+        <div class="config">Top 10 · Buffer 10/20 · Gold: $RMC/XAUUSD ≥ 2.0 · Bench: $RMC</div>
+    </a>
+
+    <a class="card" href="russell_top200/dashboard.html">
+        <h3>Russell Top 200</h3>
+        <div class="period">30 years · 366 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">20.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">12.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+8.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">56x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-43.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">60%</div>
+            </div>
+        </div>
+        <div class="config">Top 5 · Buffer 5/12 · Gold: $RT200/XAUUSD ≥ 1.2 · Bench: $RT200</div>
+    </a>
+
+    <a class="card" href="russell2000/dashboard.html">
+        <h3>Russell 2000</h3>
+        <div class="period">36 years · 426 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">19.1%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">11.4%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+7.7%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">93x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-50.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">56%</div>
+            </div>
+        </div>
+        <div class="config">Top 10 · Buffer 10/25 · Gold: $RUT/XAUUSD ≥ 1.6 · Bench: $RUT</div>
+    </a>
+
+    <a class="card" href="sp_midcap400/dashboard.html">
+        <h3>S&P MidCap 400</h3>
+        <div class="period">34 years · 414 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">18.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">12.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+6.1%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">69x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-51.4%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">60%</div>
+            </div>
+        </div>
+        <div class="config">Top 10 · Buffer 10/20 · Gold: $MID/XAUUSD ≥ 1.9 · Bench: $MID</div>
+    </a>
+
+    <a class="card" href="sp100/dashboard.html">
+        <h3>S&P 100</h3>
+        <div class="period">36 years · 426 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">17.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">11.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+5.6%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">59x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-43.1%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">60%</div>
+            </div>
+        </div>
+        <div class="config">Top 5 · Buffer 5/12 · Gold: $OEX/XAUUSD ≥ 2.4 · Bench: $OEX</div>
+    </a>
+
+    <a class="card" href="nasdaq_biotech/dashboard.html">
+        <h3>NASDAQ Biotech</h3>
+        <div class="period">24 years · 294 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value green">16.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">13.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+2.6%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">11x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-64.9%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">52%</div>
+            </div>
+        </div>
+        <div class="config">Top 3 · Buffer 3/7 · Gold: $NBI/XAUUSD ≥ 3.5 · Bench: $NBI</div>
+    </a>
+
+    <a class="card" href="sp500/dashboard.html">
+        <h3>S&P 500</h3>
+        <div class="period">36 years · 426 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value ">14.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">11.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+3.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">26x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-45.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">62%</div>
+            </div>
+        </div>
+        <div class="config">Top 20 · Buffer 20/40 · Gold: $SPX/XAUUSD ≥ 4.6 · Bench: $SPX</div>
+    </a>
+
+    <a class="card" href="sp_smallcap600/dashboard.html">
+        <h3>S&P SmallCap 600</h3>
+        <div class="period">32 years · 378 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value ">14.1%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">12.5%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+1.6%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">13x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value red">-64.8%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">60%</div>
+            </div>
+        </div>
+        <div class="config">Top 10 · Buffer 10/20 · Gold: $SML/XAUUSD ≥ 1.0 · Bench: $SML</div>
+    </a>
+
+    <a class="card" href="djia/dashboard.html">
+        <h3>Dow Jones Industrial Average</h3>
+        <div class="period">36 years · 426 months</div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Strategy CAGR</div>
+                <div class="stat-value ">13.3%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Benchmark CAGR</div>
+                <div class="stat-value muted">11.2%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Alpha</div>
+                <div class="stat-value green">+2.0%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Multiple</div>
+                <div class="stat-value">16x</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Max Drawdown</div>
+                <div class="stat-value ">-26.7%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value">61%</div>
+            </div>
+        </div>
+        <div class="config">Top 3 · Buffer 3/7 · Gold: $DJI/XAUUSD ≥ 36.0 · Bench: $DJI</div>
+    </a>
+
+</div>
+</body></html>
