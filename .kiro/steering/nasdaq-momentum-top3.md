@@ -157,3 +157,20 @@ These are structural costs of concentrated momentum. Cannot be filtered without 
 - **Leveraged:** MUU, STX, WDC
 - **NDX/XAUUSD ratio:** 7.56 (above 7.0 → in gold rotation currently)
 - **Top 10 ranked:** SNDK, WDC, MU, STX, INTC, MRVL, LITE, AMAT, LRCX, ARM
+
+## Future Enhancements (TODO)
+
+### Volume Filter for SmallCap/MidCap Universes
+- **Why:** Russell 2000, S&P SmallCap 600, and S&P MidCap 400 may select thinly-traded stocks that are hard to execute at backtested prices.
+- **Implementation:** Add `min_avg_volume` config option (e.g., 500,000 shares/day minimum 20-day average). Filter out low-volume stocks before scoring.
+- **Data needed:** Build `all_prices_volume.parquet` from Norgate CSVs (Volume column already exists in raw data).
+- **Priority:** Low for NASDAQ-100 (all highly liquid). Required before deploying real money on smallcap/midcap strategies.
+- **Not needed for:** NASDAQ-100, S&P 100, Russell Top 200, DJIA (all mega/large-cap, always liquid).
+
+### VIX-Adaptive Lookback for Other Universes
+- **Status:** Proven for NASDAQ-100 (41.3% CAGR vs 34.8% standard). Not yet tested for other universes.
+- **TODO:** Test VIX>30 → 126d/42d lookback for S&P 500, Russell 1000, etc.
+
+### Incremental Parquet Updates
+- **Script:** `build_prices_parquet.py --incremental`
+- **Monthly workflow:** Sync new CSVs from Windows VM → run incremental → re-run backtests
