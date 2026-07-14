@@ -129,6 +129,8 @@ def generate_dashboard(universe_name):
             "benchReturns": bench_returns,
             "top7": row.get("Top10", ""),
             "changes": row.get("Changes", ""),
+            "vix": float(row["VIX"]) if "VIX" in row and row.get("VIX", "") != "" and pd.notna(row.get("VIX")) else None,
+            "vixFast": bool(row.get("VIX_Fast", False)) if "VIX_Fast" in row else False,
         })
 
     # Determine start date for the input

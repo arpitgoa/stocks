@@ -88,7 +88,7 @@ def load_prices_for_universe(universe_folder, config):
     membership = load_membership(universe_folder)
     universe_tickers = set(membership["Symbol"].unique())
 
-    extra_tickers = {"XAUUSD"}
+    extra_tickers = {"XAUUSD", "$VIX"}
     extra_tickers.add(config.get("gold_signal_index", "$NDX"))
     extra_tickers.add(config.get("benchmark", ""))
     extra_tickers.add(config.get("benchmark_etf", ""))
@@ -198,6 +198,36 @@ def _get_precomputed_by_date():
         print("  Grouping precomputed scores by date...")
         _precomputed_by_date = {d: g.reset_index(drop=True) for d, g in df.groupby("Date")}
     return _precomputed_by_date
+
+
+def _score_from_prices_custom(prices_df, universe_tickers, rebal_date, lookback_long, lookback_short, skip_days=5):
+    """Live momentum scoring with custom lookback periods (for VIX-adaptive mode)."""
+    import numpy as np
+    results = []
+    for ticker in universe_tickers:
+        if ticker not in prices_df.columns: continue
+        ts = prices_df[ticker].loc[:rebal_date].dropna()
+        if len(ts) < lookback_long + skip_days: continue
+        end_idx = len(ts) - 1 - skip_days
+        if end_idx < lookback_long: continue
+        price_end = ts.iloc[end_idx]
+        price_long = ts.iloc[end_idx - lookback_long]
+        price_short = ts.iloc[end_idx - lookback_short]
+        if price_long <= 0 or price_short <= 0: continue
+        ret_long = price_end / price_long - 1
+        ret_short = price_end / price_short - 1
+        log_rets = np.log(ts.iloc[end_idx-lookback_long:end_idx+1] / ts.iloc[end_idx-lookback_long:end_idx+1].shift(1)).dropna()
+        if len(log_rets) < 50: continue
+        vol = log_rets.std() * np.sqrt(252)
+        if vol <= 0: continue
+        results.append({"Ticker": ticker, "MR_12": ret_long/vol, "MR_6": ret_short/vol})
+    if not results: return pd.DataFrame()
+    df = pd.DataFrame(results)
+    df["Z_12"] = (df["MR_12"] - df["MR_12"].mean()) / df["MR_12"].std()
+    df["Z_6"] = (df["MR_6"] - df["MR_6"].mean()) / df["MR_6"].std()
+    df["Weighted_Z"] = 0.5 * df["Z_12"] + 0.5 * df["Z_6"]
+    df["Momentum_Score"] = df["Weighted_Z"].apply(lambda z: (1+z) if z >= 0 else 1/(1-z))
+    return df.sort_values("Momentum_Score", ascending=False).reset_index(drop=True)
 
 
 def calculate_momentum_scores_vectorized(prices_df, universe_tickers, cutoff_idx,
@@ -364,8 +394,21 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
         # Get universe members (O(1) lookup)
         universe = membership_lookup[rebal_date]
 
-        # Vectorized momentum scoring
-        scores = calculate_momentum_scores_vectorized(prices, universe, cutoff_idx)
+        # VIX-adaptive lookback
+        vix_threshold = config.get("vix_threshold", None)
+        custom_lookback = None
+        if vix_threshold and "$VIX" in prices.columns:
+            vix_ts = prices["$VIX"].loc[:rebal_date].dropna()
+            if len(vix_ts) > 0 and vix_ts.iloc[-1] > vix_threshold:
+                custom_lookback = (config.get("vix_fast_long", 126), config.get("vix_fast_short", 42))
+
+        # Momentum scoring
+        if custom_lookback:
+            # Use live calculation with fast lookback
+            scores = _score_from_prices_custom(prices, universe, rebal_date, custom_lookback[0], custom_lookback[1])
+        else:
+            # Standard: use precomputed or normal lookback
+            scores = calculate_momentum_scores_vectorized(prices, universe, cutoff_idx)
         if scores.empty:
             portfolio_value += monthly_contribution
             total_invested  += monthly_contribution
@@ -435,6 +478,13 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
         portfolio_value += monthly_contribution
         total_invested  += monthly_contribution
 
+        # Get VIX value for this month
+        vix_val = None
+        if "$VIX" in prices.columns:
+            vix_ts = prices["$VIX"].loc[:rebal_date].dropna()
+            if len(vix_ts) > 0:
+                vix_val = round(vix_ts.iloc[-1], 1)
+
         holdings_history.append({
             "Rebal_Date": rebal_date,
             "Next_Rebal": next_rebal,
@@ -448,6 +498,8 @@ def run_backtest(universe_name, top_n=None, entry_rank=None, exit_rank=None,
             "Top10": scores.head(10)["Ticker"].tolist(),
             "Removed": removed,
             "Added": added,
+            "VIX": vix_val,
+            "VIX_Fast": custom_lookback is not None if config.get("vix_threshold") else False,
         })
 
         if i % 50 == 0:
@@ -499,6 +551,8 @@ def _save_wide_csv(universe_name, holdings_history, prices, benchmark_symbol):
             "Portfolio_End": round(h["Portfolio_Value"], 2),
             "Portfolio_Return_Pct": round(h["Period_Return"] * 100, 2),
             "Leveraged_Return_Pct": round(h.get("Leveraged_Return", h["Period_Return"]) * 100, 2),
+            "VIX": h.get("VIX", ""),
+            "VIX_Fast": h.get("VIX_Fast", False),
         }
 
         bench_ret = None
