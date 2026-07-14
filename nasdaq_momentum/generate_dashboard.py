@@ -17,10 +17,7 @@ import pandas as pd
 import json
 from pathlib import Path
 from universe_config import get_config, UNIVERSE_CONFIGS
-
-NORGATE_DIR = Path.home() / "Documents" / "workspace" / "historical-index-universe-data"
-PRICES_DIR = NORGATE_DIR / "prices"
-OUTPUT_DIR = Path.home() / "Documents" / "workspace" / "stocks" / "nasdaq_momentum"
+from core.paths import NORGATE_DIR, PRICES_DIR, OUTPUT_DIR
 
 UNIVERSE_LABELS = {
     "nasdaq100": "NASDAQ-100",
