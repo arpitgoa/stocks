@@ -33,7 +33,7 @@ function recalculate() {
             val*=(1+m.p/100);benchVal*=(1+m.b/100);val+=1000;benchVal+=1000;totalInvested+=1000;
             if(val>peak)peak=val;const dd=(peak-val)/peak;if(dd>maxDD)maxDD=dd;
             cumValues.push(val);cumDates.push(m.d);
-            const year=m.d.substring(0,4);if(!yearly[year])yearly[year]=1;yearly[year]*=(1+m.p/100);
+            const ym=parseInt(m.d.substring(5,7));const yr=parseInt(m.d.substring(0,4));const endYear=ym===12?yr+1:yr;const year=String(endYear);if(!yearly[year])yearly[year]=1;yearly[year]*=(1+m.p/100);
         }
         const years=months.length/12;
         const cagr=(Math.pow(val/100000,1/years)-1)*100;

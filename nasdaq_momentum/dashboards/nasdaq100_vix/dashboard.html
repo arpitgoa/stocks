@@ -330,12 +330,12 @@ function recalculate() {
         }
     });
     
-    // Yearly returns bar chart
+    // Yearly returns bar chart (group by end date year = calendar year the return was realized)
     const yearlyReturns = {};
     const yearlyQQQ = {};
     const yearlyLev = {};
     for (const r of results) {
-        const year = r.start.substring(0,4);
+        const year = r.end.substring(0,4);
         if (!yearlyReturns[year]) { yearlyReturns[year] = 1; yearlyQQQ[year] = 1; yearlyLev[year] = 1; }
         yearlyReturns[year] *= (1 + r.portRet/100);
         if (r.qqqRet !== null) yearlyQQQ[year] *= (1 + r.qqqRet/100);
