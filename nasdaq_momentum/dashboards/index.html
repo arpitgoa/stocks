@@ -9,6 +9,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:30px;backgro
 #lineChartContainer{background:white;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-top:20px;height:450px}
 </style></head><body>
 <h1>📊 Momentum Strategy — All Universes</h1>
+<div id="liveSignals" style="background:white;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px;border-left:4px solid #1f77b4;">
+<h2 style="margin:0 0 12px 0;">🔔 Live Signals <span style="font-size:12px;color:#666;font-weight:normal;">Updated: 2026-07-16</span></h2>
+<table style="width:100%;border-collapse:collapse;font-size:12px;">
+<thead><tr style="background:#f8f9fa;"><th style="padding:8px;text-align:left;">Universe</th><th>Signal</th><th>Holdings</th><th>Leveraged</th><th>Index/Gold</th><th>VIX</th></tr></thead>
+<tbody>
+<tr style="background:#fff3cd;"><td style="font-weight:bold;"><a href="nasdaq100/dashboard.html">NASDAQ-100</a></td><td>🟡 GOLD</td><td><strong>GLD</strong></td><td>-</td><td>7.24</td><td>15</td></tr>
+<tr style="background:#fff3cd;"><td style="font-weight:bold;"><a href="nasdaq100_vix/dashboard.html">NASDAQ-100 VIX Optimized</a></td><td>🟡 GOLD</td><td><strong>GLD</strong></td><td>-</td><td>7.24</td><td>15</td></tr>
+<tr style="background:#fff3cd;"><td style="font-weight:bold;"><a href="nasdaq_q50/dashboard.html">NASDAQ Q-50 (ranks 101-150)</a></td><td>🟡 GOLD</td><td><strong>GLD</strong></td><td>-</td><td>7.24</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="nasdaq_biotech/dashboard.html">NASDAQ Biotech</a></td><td>📈 STOCKS</td><td><strong>DFTX, ERAS, ORKA</strong></td><td style="font-size:10px;color:#666;">DFTX, ERAS, ORKA</td><td>1.61</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="sp500/dashboard.html">S&P 500</a></td><td>📈 STOCKS</td><td><strong>MU, SNDK, WDC</strong></td><td style="font-size:10px;color:#666;">MUU, SNDK, WDC</td><td>1.84</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="sp100/dashboard.html">S&P 100</a></td><td>📈 STOCKS</td><td><strong>AMAT, INTC, MU</strong></td><td style="font-size:10px;color:#666;">AMAT, INTC, MUU</td><td>0.91</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="sp_midcap400/dashboard.html">S&P MidCap 400</a></td><td>📈 STOCKS</td><td><strong>DOCN, MKSI, ROIV, VIAV, VICR</strong></td><td style="font-size:10px;color:#666;">DOCN, MKSI, ROIV, VIAV, VICR</td><td>0.92</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="sp_smallcap600/dashboard.html">S&P SmallCap 600</a></td><td>📈 STOCKS</td><td><strong>BTSG, EZPW, ICHR, KLIC, LQDA</strong></td><td style="font-size:10px;color:#666;">BTSG, EZPW, ICHR, KLIC, LQDA</td><td>0.43</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="russell1000/dashboard.html">Russell 1000</a></td><td>📈 STOCKS</td><td><strong>MU, SNDK, WDC</strong></td><td style="font-size:10px;color:#666;">MUU, SNDK, WDC</td><td>1.00</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="russell2000/dashboard.html">Russell 2000</a></td><td>📈 STOCKS</td><td><strong>ATEX, AXTI, CLYM, DFTX, ERAS</strong></td><td style="font-size:10px;color:#666;">ATEX, AXTI, CLYM, DFTX, ERAS</td><td>0.72</td><td>15</td></tr>
+<tr style="background:#fff3cd;"><td style="font-weight:bold;"><a href="russell_midcap/dashboard.html">Russell Mid Cap</a></td><td>🟡 GOLD</td><td><strong>GLD</strong></td><td>-</td><td>1.06</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="russell_top200/dashboard.html">Russell Top 200</a></td><td>📈 STOCKS</td><td><strong>MU, SNDK, WDC</strong></td><td style="font-size:10px;color:#666;">MUU, SNDK, WDC</td><td>0.47</td><td>15</td></tr>
+<tr style="background:#d4edda;"><td style="font-weight:bold;"><a href="djia/dashboard.html">Dow Jones Industrial Average</a></td><td>📈 STOCKS</td><td><strong>CAT, CSCO, JNJ</strong></td><td style="font-size:10px;color:#666;">CAT, CSCO, JNJ</td><td>12.78</td><td>15</td></tr>
+</tbody></table>
+</div>
 <div class="controls"><div><label>Start:</label> <input type="month" id="startDate" value="1990-01"></div><div><label>End:</label> <input type="month" id="endDate" value="2026-07"></div><div><button onclick="recalculate()" style="padding:7px 16px;background:#343a40;color:white;border:none;border-radius:4px;cursor:pointer;">Apply</button></div></div>
 <div class="grid" id="cardsContainer"></div>
 <h2>Cumulative Growth (Log Scale)</h2><div id="lineChartContainer"><canvas id="lineChart"></canvas></div>
