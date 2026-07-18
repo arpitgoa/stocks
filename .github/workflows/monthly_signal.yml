@@ -23,6 +23,7 @@ jobs:
       
       - name: Check if today is a trading day
         id: check_trading_day
+        if: github.event_name == 'schedule'
         run: |
           python -c "
           from datetime import datetime
@@ -42,7 +43,6 @@ jobs:
               exit(1)
           print('✅ Last trading day of month — running signal')
           "
-        continue-on-error: false
       
       - name: Install dependencies
         run: |
