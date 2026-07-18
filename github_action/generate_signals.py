@@ -82,10 +82,13 @@ def generate_signal(universe_name, prices, prev_holdings=None):
             gold_ratio = idx_val / gold_val
             if gold_ratio >= gold_threshold:
                 go_gold = True
-                # Still calculate top 3 for reference
-                ref_scores = calculate_scores(prices, members, lookback_long, lookback_short)
-                if not ref_scores.empty:
-                    top3_ref = ref_scores.head(3)["Ticker"].tolist()
+                # Still calculate top 3 for reference (use standard 252/126 lookback)
+                try:
+                    ref_scores = calculate_scores(prices, members, 252, 126)
+                    if not ref_scores.empty:
+                        top3_ref = ref_scores.head(3)["Ticker"].tolist()
+                except:
+                    pass
         print(f"    Gold check: {gold_signal}={idx_val}, GC=F={gold_val}, ratio={gold_ratio}, threshold={gold_threshold}, go_gold={go_gold}")
     else:
         print(f"    Gold check SKIPPED: {gold_signal} in prices={gold_signal in prices.columns}, GC=F in prices={'GC=F' in prices.columns}")
