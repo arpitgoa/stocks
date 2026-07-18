@@ -81,6 +81,9 @@ def generate_signal(universe_name, prices, prev_holdings=None):
             gold_ratio = idx_val / gold_val
             if gold_ratio >= gold_threshold:
                 go_gold = True
+        print(f"    Gold check: {gold_signal}={idx_val}, GC=F={gold_val}, ratio={gold_ratio}, threshold={gold_threshold}, go_gold={go_gold}")
+    else:
+        print(f"    Gold check SKIPPED: {gold_signal} in prices={gold_signal in prices.columns}, GC=F in prices={'GC=F' in prices.columns}")
     
     # VIX check
     vix_val = None

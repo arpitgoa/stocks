@@ -47,13 +47,13 @@ def format_signals_message(signals, constituent_sources=None):
     
     for s in signals:
         label = s["label"]
+        ratio_str = f" ({s['gold_ratio']:.2f}/{s['gold_threshold']})" if s.get('gold_ratio') else ""
         if s["go_gold"]:
-            ratio_str = f"{s['gold_ratio']:.2f}" if s['gold_ratio'] else "N/A"
-            lines.append(f"🟡 <b>{label}</b>: GOLD (ratio={ratio_str})")
+            lines.append(f"🟡 <b>{label}</b>: GOLD{ratio_str}")
         else:
             stocks = ", ".join(s["portfolio"])
             lev = ", ".join(s["leveraged"])
-            lines.append(f"📈 <b>{label}</b>: {stocks}")
+            lines.append(f"📈 <b>{label}</b>: {stocks}{ratio_str}")
             if lev != stocks:
                 lines.append(f"    <i>Lev: {lev}</i>")
     
