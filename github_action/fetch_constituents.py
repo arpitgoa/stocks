@@ -142,11 +142,22 @@ FETCH_FUNCTIONS = {
 }
 
 
-def fetch_all():
-    """Fetch constituents for all indices. Uses fallback chain."""
+def fetch_all(force=False):
+    """Fetch constituents for all indices. Skips if cached files are less than 30 days old."""
     results = {}
     
     for index_name, fetch_funcs in FETCH_FUNCTIONS.items():
+        cached = DATA_DIR / f"{index_name}.csv"
+        
+        # Skip scraping if cached file is recent (less than 30 days old)
+        if not force and cached.exists():
+            import os, time
+            age_days = (time.time() - os.path.getmtime(cached)) / 86400
+            if age_days < 30:
+                df = pd.read_csv(cached)
+                results[index_name] = {"tickers": df["Symbol"].tolist(), "source": "cached"}
+                continue
+        
         print(f"Fetching {index_name}...", end=" ")
         tickers = []
         

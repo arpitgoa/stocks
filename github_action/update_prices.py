@@ -155,6 +155,11 @@ def update_prices():
         last_date = prices.index[-1]
         days_missing = (today - last_date).days
         
+        # Skip weekends — if last data is Friday and today is Sat/Sun, we're current
+        if days_missing <= 2 and today.weekday() >= 5:  # Saturday=5, Sunday=6
+            print(f"✅ Prices current (last: {last_date.date()}, weekend — no new data)")
+            return prices
+        
         if days_missing <= 0:
             print(f"✅ Prices current (last: {last_date.date()}, {prices.shape[1]} tickers)")
             return prices
