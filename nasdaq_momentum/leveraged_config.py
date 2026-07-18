@@ -5,6 +5,7 @@ Maps underlying stocks to their 2x leveraged single-stock ETFs.
 
 # Stock ticker -> Leveraged ETF ticker
 LEVERAGED_ETF_MAP = {
+    "XAUUSD": "UGL",
     "AAPL": "AAPU",
     "AMD": "AMUU",
     "AMZN": "AMZU",
