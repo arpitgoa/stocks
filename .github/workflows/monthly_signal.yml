@@ -1,0 +1,65 @@
+name: Monthly Momentum Signal
+
+on:
+  # Runs on last few days of each month at 5 PM ET (10 PM UTC)
+  schedule:
+    - cron: '0 22 28-31 * *'  # 28th-31st of every month at 10 PM UTC (5 PM ET)
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  generate-signal:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Check if today is a trading day
+        id: check_trading_day
+        run: |
+          python -c "
+          from datetime import datetime
+          today = datetime.now()
+          # Skip weekends
+          if today.weekday() >= 5:
+              print('Not a trading day (weekend)')
+              exit(1)
+          # Simple check: only run on last trading day of month
+          # Run on 28-31, the last weekday will naturally be the last trading day
+          import calendar
+          last_day = calendar.monthrange(today.year, today.month)[1]
+          remaining_weekdays = sum(1 for d in range(today.day + 1, last_day + 1) 
+                                   if datetime(today.year, today.month, d).weekday() < 5)
+          if remaining_weekdays > 0:
+              print(f'Not last trading day ({remaining_weekdays} weekdays remain)')
+              exit(1)
+          print('✅ Last trading day of month — running signal')
+          "
+        continue-on-error: false
+      
+      - name: Install dependencies
+        run: |
+          pip install -r github_action/requirements.txt
+      
+      - name: Run pipeline
+        working-directory: github_action
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python run_pipeline.py
+      
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add github_action/data/ || true
+          git diff --staged --quiet || git commit -m "chore: update prices and constituents [skip ci]"
+          git push || true
