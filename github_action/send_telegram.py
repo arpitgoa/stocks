@@ -43,34 +43,52 @@ def format_signals_message(signals, constituent_sources=None):
     """Format signals into a readable Telegram message."""
     date_str = datetime.now().strftime("%Y-%m-%d")
     
-    lines = [f"<b>📊 Monthly Momentum Signals</b>", f"<i>Date: {date_str}</i>", ""]
+    lines = [
+        f"<b>📊 Monthly Momentum Signals</b>",
+        f"<i>{date_str}</i>",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━",
+    ]
     
     for s in signals:
         label = s["label"]
-        ratio_str = f" ({s['gold_ratio']:.2f}/{s['gold_threshold']})" if s.get('gold_ratio') else ""
+        ratio_str = f"{s['gold_ratio']:.2f}" if s.get('gold_ratio') else "—"
+        thresh_str = f"{s['gold_threshold']}" if s.get('gold_threshold') else ""
+        
         if s["go_gold"]:
-            lines.append(f"🟡 <b>{label}</b>: GOLD{ratio_str}")
+            lines.append(f"🟡 <b>{label}</b>")
+            lines.append(f"     HOLD: GLD")
+            lines.append(f"     Ratio: {ratio_str} ≥ {thresh_str}")
+            # Show top 3 momentum stocks as reference
+            top3 = s.get("top3", [])
+            if top3:
+                lines.append(f"     <i>Top 3: {', '.join(top3)}</i>")
         else:
             stocks = ", ".join(s["portfolio"])
-            lev = ", ".join(s["leveraged"])
-            lines.append(f"📈 <b>{label}</b>: {stocks}{ratio_str}")
-            if lev != stocks:
-                lines.append(f"    <i>Lev: {lev}</i>")
+            lines.append(f"📈 <b>{label}</b>")
+            lines.append(f"     BUY: {stocks}")
+            lines.append(f"     Ratio: {ratio_str} / {thresh_str}")
+        
+        lines.append("")
     
-    # Add VIX
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # VIX
     vix_signal = next((s for s in signals if s.get("vix")), None)
     if vix_signal:
-        lines.append(f"\nVIX: {vix_signal['vix']:.1f}")
+        vix_val = vix_signal['vix']
+        vix_emoji = "⚡" if vix_val > 30 else "✅" if vix_val < 20 else "⚠️"
+        lines.append(f"{vix_emoji} VIX: {vix_val:.1f}")
     
-    # Add data source info
+    # Data source
     if constituent_sources:
         live = [k for k, v in constituent_sources.items() if v.get("source") == "live"]
         cached = [k for k, v in constituent_sources.items() if v.get("source") == "cached"]
         lines.append("")
         if live:
-            lines.append(f"✅ Live data: {', '.join(live)}")
+            lines.append(f"✅ Live: {', '.join(live)}")
         if cached:
-            lines.append(f"⚠️ Cached data: {', '.join(cached)}")
+            lines.append(f"📁 Cached: {', '.join(cached)}")
     
     return "\n".join(lines)
 

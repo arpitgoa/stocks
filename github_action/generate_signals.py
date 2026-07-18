@@ -74,6 +74,7 @@ def generate_signal(universe_name, prices, prev_holdings=None):
     # Gold rotation check
     gold_ratio = None
     go_gold = False
+    top3_ref = []
     if gold_signal in prices.columns and "GC=F" in prices.columns:
         idx_val = prices[gold_signal].dropna().iloc[-1] if prices[gold_signal].notna().any() else None
         gold_val = prices["GC=F"].dropna().iloc[-1] if prices["GC=F"].notna().any() else None
@@ -81,6 +82,10 @@ def generate_signal(universe_name, prices, prev_holdings=None):
             gold_ratio = idx_val / gold_val
             if gold_ratio >= gold_threshold:
                 go_gold = True
+                # Still calculate top 3 for reference
+                ref_scores = calculate_scores(prices, members, lookback_long, lookback_short)
+                if not ref_scores.empty:
+                    top3_ref = ref_scores.head(3)["Ticker"].tolist()
         print(f"    Gold check: {gold_signal}={idx_val}, GC=F={gold_val}, ratio={gold_ratio}, threshold={gold_threshold}, go_gold={go_gold}")
     else:
         print(f"    Gold check SKIPPED: {gold_signal} in prices={gold_signal in prices.columns}, GC=F in prices={'GC=F' in prices.columns}")
@@ -130,6 +135,7 @@ def generate_signal(universe_name, prices, prev_holdings=None):
         "vix_fast": use_fast,
         "portfolio": sorted(new_portfolio),
         "leveraged": [LEVERAGED_ETF_MAP.get(t, t) for t in sorted(new_portfolio)],
+        "top3": top3_ref if go_gold else sorted(new_portfolio)[:3],
         "top10": scores.head(10)[["Ticker", "Rank", "Momentum_Score"]].to_dict("records") if not scores.empty else [],
     }
 
