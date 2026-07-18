@@ -1,9 +1,9 @@
 name: Monthly Momentum Signal
 
 on:
-  # Runs on last few days of each month at 5 PM ET (10 PM UTC)
   schedule:
-    - cron: '0 22 28-31 * *'  # 28th-31st of every month at 10 PM UTC (5 PM ET)
+    - cron: '0 19 * * 5'       # Every Friday at 12 PM PST (7 PM UTC) — 1hr before market close
+    - cron: '0 19 27-31 * *'   # Last 5 days of month at 12 PM PST (7 PM UTC)
   
   # Allow manual trigger
   workflow_dispatch:
@@ -28,20 +28,11 @@ jobs:
           python -c "
           from datetime import datetime
           today = datetime.now()
-          # Skip weekends
+          # Skip weekends (Sat=5, Sun=6)
           if today.weekday() >= 5:
               print('Not a trading day (weekend)')
               exit(1)
-          # Simple check: only run on last trading day of month
-          # Run on 28-31, the last weekday will naturally be the last trading day
-          import calendar
-          last_day = calendar.monthrange(today.year, today.month)[1]
-          remaining_weekdays = sum(1 for d in range(today.day + 1, last_day + 1) 
-                                   if datetime(today.year, today.month, d).weekday() < 5)
-          if remaining_weekdays > 0:
-              print(f'Not last trading day ({remaining_weekdays} weekdays remain)')
-              exit(1)
-          print('✅ Last trading day of month — running signal')
+          print(f'✅ Trading day ({today.strftime(\"%A %Y-%m-%d\")}) — running signal')
           "
       
       - name: Install dependencies
