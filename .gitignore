@@ -17,3 +17,4 @@ frontend/dist/
 
 nasdaq_momentum/data/*.parquet
 nasdaq_momentum/data/*.csv
+github_action/data/prices.parquet
