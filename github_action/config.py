@@ -155,7 +155,7 @@ CONSTITUENT_SOURCES = {
 # SIGNAL TICKERS (always needed)
 # ============================================================
 
-SIGNAL_TICKERS = ["^NDX", "^GSPC", "^DJI", "^VIX", "^OEX", "^MID", "^RUI", "^RUT", "GC=F"]
+SIGNAL_TICKERS = ["^NDX", "^GSPC", "^DJI", "^VIX", "^OEX", "^MID", "^RUI", "^RUT", "GC=F", "SPY", "QQQ", "GLD", "IWM", "DIA", "MDY", "IJR"]
 
 # ============================================================
 # LEVERAGED ETF MAP
