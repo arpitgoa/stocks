@@ -15,6 +15,7 @@ from fetch_constituents import fetch_all
 from update_prices import update_prices
 from generate_signals import generate_all_signals
 from send_telegram import send_telegram, format_signals_message
+from leverage_rules import check_leverage_rules, format_leverage_alerts, update_state
 
 
 def main():
@@ -54,8 +55,46 @@ def main():
     
     # Step 4: Send Telegram
     print("\n[4/4] Sending notification...")
+    
+    # Check leverage rules
+    leverage_alerts = check_leverage_rules(signals)
+    if leverage_alerts:
+        print(f"  ⚡ {len(leverage_alerts)} leverage rule(s) triggered!")
+        for alert in leverage_alerts:
+            print(f"    Rule {alert['rule']}: {alert['name']} — {alert['confidence']}")
+    else:
+        print("  No leverage rules triggered.")
+    
     message = format_signals_message(signals, constituents)
+    
+    # Append leverage alerts to message
+    leverage_msg = format_leverage_alerts(leverage_alerts)
+    if leverage_msg:
+        message += leverage_msg
+    
     send_telegram(message)
+    
+    # Update state for next run
+    # Calculate this month's approximate return from last month's holdings
+    from leverage_rules import load_state
+    prev_state = load_state()
+    prev_portfolio = prev_state.get("portfolio", [])
+    monthly_return = None
+    
+    if prev_portfolio and prices is not None and not prices.empty:
+        # Calculate return of previous holdings over last month
+        rets = []
+        for ticker in prev_portfolio:
+            if ticker in prices.columns:
+                ts = prices[ticker].dropna()
+                if len(ts) >= 22:
+                    month_ret = ts.iloc[-1] / ts.iloc[-22] - 1
+                    rets.append(month_ret * 100)
+        if rets:
+            monthly_return = sum(rets) / len(rets)
+            print(f"  📊 Last month's portfolio return (est): {monthly_return:+.1f}%")
+    
+    update_state(signals, portfolio_return=monthly_return)
     
     print(f"\n{'='*60}")
     print("✅ Pipeline complete.")

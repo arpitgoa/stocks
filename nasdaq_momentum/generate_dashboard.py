@@ -164,6 +164,9 @@ def _build_html(data, label, start_month, config=None):
         subtitle = "Monthly rebalance · Buffer 3/7 · Equal weight"
         benchmark_label = "Benchmark"
     
+    # Leverage notes — only for NDX-based universes
+    leverage_notes = _get_leverage_notes(config)
+    
     tpl_before = (TEMPLATE_BEFORE
         .replace("{{TITLE}}", label)
         .replace("{{LABEL}}", label)
@@ -171,11 +174,82 @@ def _build_html(data, label, start_month, config=None):
         .replace("{{SUBTITLE}}", subtitle)
         .replace("{{BENCHMARK_LABEL}}", benchmark_label)
         .replace("{{UNIVERSE_LABEL}}", label)
+        .replace("{{LEVERAGE_NOTES}}", leverage_notes)
     )
     
     tpl_after = TEMPLATE_AFTER.replace("{{BENCHMARK_LABEL}}", benchmark_label)
     
     return tpl_before + data_json + tpl_after
+
+
+# Leverage notes HTML per universe type
+_NDX_LEVERAGE_NOTES = '''<div id="leverageNotes" style="background:white;border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-left:4px solid #ff9800;">
+<h4 style="margin:0 0 10px 0;color:#333;">⚡ Leverage Opportunities (Not Implemented — For Consideration)</h4>
+<div style="font-size:12px;line-height:1.8;color:#444;">
+<p><strong>1. After Exiting Gold → Re-entering Stocks (2x that month)</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>100%</strong> (7/7 times over 31 years)</li>
+<li>Average return that month: <strong>+13.8%</strong></li>
+<li>Triggers only ~once every 4 years</li>
+<li>Logic: When gold signal ends, the stocks selected for re-entry have built momentum while you were in gold. The re-entry catches the start of a new run.</li>
+<li>Backtested impact: <strong>+3.5% CAGR</strong> with same max drawdown (-32.7%)</li>
+</ul>
+<p style="margin-top:12px;"><strong>2. After >10% Portfolio Month + Previous Month Also Green (2x next month)</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>78%</strong> (29/37 triggers over 31 years)</li>
+<li>Average next-month return: <strong>+6.3%</strong></li>
+<li>Triggers ~1-2x per year</li>
+<li>Logic: Two green months in a row where the second was >10% confirms a genuine momentum run. Losses mostly happen when +10% comes out of nowhere after a red month (dead cat bounce) — this filter removes those.</li>
+<li>Backtested impact at 2x: <strong>+7.2% CAGR</strong> (40.4% → 47.6%), same max drawdown (-32.7%)</li>
+</ul>
+<p style="margin-top:12px;"><strong>3. Two Consecutive >10% Months + QQQ Above 200 DMA &rarr; 2x the Third Month</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>92%</strong> (12/13 triggers over 31 years)</li>
+<li>Average next-month return: <strong>+13.3%</strong> (wins avg), only loss was -3.9%</li>
+<li>Triggers ~once every 2-3 years (rare but highest confidence)</li>
+<li>Logic: Two back-to-back monster months with QQQ in an uptrend = confirmed epic run. Without 200 DMA filter, the losses were -16% (bear market rally fakeouts).</li>
+<li>Backtested impact at 2x: <strong>+4.7% CAGR</strong>, max drawdown stays near original (-34%)</li>
+</ul>
+<p style="margin-top:12px;"><strong>4. After a -10% Portfolio Month &rarr; 2x Next Month (Mean Reversion)</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>75%</strong> (12/16 triggers over 31 years)</li>
+<li>Average next-month return: <strong>+7.3%</strong></li>
+<li>Triggers ~once every 2 years</li>
+<li>Logic: A -10% month on concentrated momentum stocks is a panic washout. They almost always bounce hard the next month. Forward 6-month returns after -10% months average +50%.</li>
+<li>Backtested impact at 2x: <strong>+4.2% CAGR</strong> (40.4% &rarr; 44.6%)</li>
+<li><strong>Max drawdown actually IMPROVES</strong> from -32.7% to -31.9% (the 2x accelerates recovery from bottoms)</li>
+</ul>
+<p style="margin-top:10px;color:#666;font-style:italic;">These rules are validated for NASDAQ-100 strategies only. Cross-universe testing shows they degrade significantly for broader indices (S&P 500, Russell, DJIA). Rules 1, 2, and 4 do not increase max drawdown. Rule 3 adds minimal DD risk (-34% vs -33%).</p>
+</div>
+</div>'''
+
+_MIDCAP_LEVERAGE_NOTES = '''<div id="leverageNotes" style="background:white;border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-left:4px solid #ff9800;">
+<h4 style="margin:0 0 10px 0;color:#333;">⚡ Leverage Opportunities (Not Implemented — For Consideration)</h4>
+<div style="font-size:12px;line-height:1.8;color:#444;">
+<p><strong>Two Consecutive >10% Months + QQQ Above 200 DMA &rarr; 2x the Third Month</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>86%</strong> (6/7 triggers)</li>
+<li>Average next-month return: <strong>+7.3%</strong></li>
+<li>Logic: Same as NASDAQ rule — two big months in a bull market signals continuation.</li>
+</ul>
+<p style="margin-top:10px;color:#666;font-style:italic;">Note: Rules 2 and 4 from NASDAQ (>10% + prev green, and -10% mean reversion) do NOT work for MidCap — win rates drop below 65% and drawdowns worsen. Only Rule 3 is valid here.</p>
+</div>
+</div>'''
+
+
+def _get_leverage_notes(config):
+    """Return leverage notes HTML based on universe config."""
+    if not config:
+        return ""
+    gold_idx = config.get("gold_signal_index", "")
+    # NDX-based universes
+    if gold_idx in ("$NDX", "^NDX"):
+        return _NDX_LEVERAGE_NOTES
+    # MidCap
+    if gold_idx in ("$MID", "^MID"):
+        return _MIDCAP_LEVERAGE_NOTES
+    # All others: no notes
+    return ""
 
 
 def main():

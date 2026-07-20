@@ -123,6 +123,18 @@ tr:hover { background: #e9ecef !important; }
 <div id="chartContainer" style="position:relative;"><canvas id="chart"></canvas><button id="scaleToggle" onclick="toggleScale()" style="position:absolute;top:10px;right:10px;padding:4px 10px;font-size:11px;background:#f0f0f0;border:1px solid #ccc;border-radius:4px;cursor:pointer;">Linear</button></div>
 <div id="yearlyChartContainer"><canvas id="yearlyChart"></canvas></div>
 <div id="stockStats"></div>
+<div id="leverageNotes" style="background:white;border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-left:4px solid #ff9800;">
+<h4 style="margin:0 0 10px 0;color:#333;">⚡ Leverage Opportunities (Not Implemented — For Consideration)</h4>
+<div style="font-size:12px;line-height:1.8;color:#444;">
+<p><strong>Two Consecutive >10% Months + QQQ Above 200 DMA &rarr; 2x the Third Month</strong></p>
+<ul style="margin:5px 0;">
+<li>Historical win rate: <strong>86%</strong> (6/7 triggers)</li>
+<li>Average next-month return: <strong>+7.3%</strong></li>
+<li>Logic: Same as NASDAQ rule — two big months in a bull market signals continuation.</li>
+</ul>
+<p style="margin-top:10px;color:#666;font-style:italic;">Note: Rules 2 and 4 from NASDAQ (>10% + prev green, and -10% mean reversion) do NOT work for MidCap — win rates drop below 65% and drawdowns worsen. Only Rule 3 is valid here.</p>
+</div>
+</div>
 <div id="tableContainer"></div>
 
 <script>
