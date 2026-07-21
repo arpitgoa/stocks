@@ -45,7 +45,7 @@ UNIVERSE_CONFIGS = {
         "vix_threshold": 30,
         "vix_fast_long": 126,
         "vix_fast_short": 42,
-        "notes": "VIX>30 switches to 126d/42d lookback. 41.3% CAGR, -32.7% DD.",
+        "notes": "VIX>30 switches to 126d/42d lookback. 40% CAGR, -32.7% DD.",
     },
     "nasdaq_q50": {
         "label": "NASDAQ Q-50 (ranks 101-150)",

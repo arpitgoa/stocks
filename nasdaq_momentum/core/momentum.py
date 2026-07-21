@@ -78,7 +78,8 @@ def _normalize_scores(df):
 # ============================================================
 
 def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
-                       lookback_long=252, lookback_short=126, skip_days=5):
+                       lookback_long=252, lookback_short=126, skip_days=5,
+                       raw_return=False):
     """
     Calculate momentum scores from raw price data.
     
@@ -89,6 +90,7 @@ def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
         lookback_long: Long lookback period in trading days (default 252 = 12M)
         lookback_short: Short lookback period in trading days (default 126 = 6M)
         skip_days: Skip last N days to avoid mean reversion (default 5)
+        raw_return: If True, use raw returns without vol-adjustment (default False)
         
     Returns:
         DataFrame with Ticker, MR_12, MR_6, Momentum_Score columns, sorted by score
@@ -108,24 +110,35 @@ def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
         
         if price_long <= 0 or price_short <= 0:
             continue
-            
-        # Calculate volatility over the lookback period
-        log_rets = np.log(
-            ts.iloc[end_idx - lookback_long:end_idx + 1] /
-            ts.iloc[end_idx - lookback_long:end_idx + 1].shift(1)
-        ).dropna()
         
-        if len(log_rets) < 100:
-            continue
-        vol = log_rets.std() * np.sqrt(252)
-        if vol <= 0:
-            continue
+        ret_long = price_end / price_long - 1
+        ret_short = price_end / price_short - 1
+        
+        if raw_return:
+            # Raw return mode: no vol-adjustment
+            results.append({
+                "Ticker": ticker,
+                "MR_12": ret_long,
+                "MR_6": ret_short,
+            })
+        else:
+            # Standard: vol-adjusted
+            log_rets = np.log(
+                ts.iloc[end_idx - lookback_long:end_idx + 1] /
+                ts.iloc[end_idx - lookback_long:end_idx + 1].shift(1)
+            ).dropna()
             
-        results.append({
-            "Ticker": ticker,
-            "MR_12": (price_end / price_long - 1) / vol,
-            "MR_6": (price_end / price_short - 1) / vol,
-        })
+            if len(log_rets) < 100:
+                continue
+            vol = log_rets.std() * np.sqrt(252)
+            if vol <= 0:
+                continue
+                
+            results.append({
+                "Ticker": ticker,
+                "MR_12": ret_long / vol,
+                "MR_6": ret_short / vol,
+            })
     
     if not results:
         return pd.DataFrame()
@@ -138,7 +151,7 @@ def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
 # ============================================================
 
 def calculate_momentum_scores(prices_df, universe_tickers, cutoff_idx,
-                              min_history=252, skip_days=5):
+                              min_history=252, skip_days=5, raw_return=False):
     """
     Calculate momentum scores — uses precomputed parquet if available,
     falls back to live calculation from prices.
@@ -149,10 +162,16 @@ def calculate_momentum_scores(prices_df, universe_tickers, cutoff_idx,
         cutoff_idx: Integer index for the rebalance date
         min_history: Minimum required price history (default 252)
         skip_days: Skip last N trading days (default 5)
+        raw_return: If True, use raw returns without vol-adjustment
         
     Returns:
         DataFrame with Ticker, MR_12, MR_6, Momentum_Score, sorted desc
     """
+    # Raw return mode: always compute live (precomputed is vol-adjusted only)
+    if raw_return:
+        return _score_from_prices(prices_df, universe_tickers, cutoff_idx, 
+                                  252, 126, skip_days, raw_return=True)
+    
     rebal_date = prices_df.index[cutoff_idx]
     by_date = _get_precomputed_by_date()
 

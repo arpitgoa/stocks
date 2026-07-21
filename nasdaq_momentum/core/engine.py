@@ -216,7 +216,8 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
                 prices, universe, rebal_date, custom_lookback[0], custom_lookback[1]
             )
         else:
-            scores = calculate_momentum_scores(prices, universe, cutoff_idx)
+            raw_return = config.get("raw_return", False)
+            scores = calculate_momentum_scores(prices, universe, cutoff_idx, raw_return=raw_return)
 
         if scores.empty:
             portfolio_value += monthly_contribution
