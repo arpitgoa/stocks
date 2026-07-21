@@ -159,6 +159,11 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
     current_holdings = set()
     total_trades = 0
 
+    # Pre-compute 10-month MA for position sizing (informational only — not applied to returns)
+    ndx_col = gold_signal_index if gold_signal_index in prices.columns else "$NDX"
+    _ndx_monthly = prices[ndx_col].dropna().resample("ME").last() if ndx_col in prices.columns else pd.Series(dtype=float)
+    _ndx_10mma = _ndx_monthly.rolling(10).mean() if len(_ndx_monthly) >= 10 else pd.Series(dtype=float)
+
     for i, rebal_date in enumerate(rebal_dates):
         next_rebal = rebal_dates[i + 1] if i + 1 < len(rebal_dates) else prices.index[-1]
         cutoff_idx = date_to_idx[rebal_date]
@@ -250,6 +255,9 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
             if lev_ticker_returns else 0
         )
 
+        # --- 10-Month Moving Average (informational — stored but not applied) ---
+        mma_scale = 1.0  # Always 1x in backtest; MMA is advisory signal only
+
         portfolio_value *= (1 + period_ret)
         portfolio_value += monthly_contribution
         total_invested += monthly_contribution
@@ -276,6 +284,7 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
             "Added": added,
             "VIX": vix_val,
             "VIX_Fast": custom_lookback is not None if config.get("vix_threshold") else False,
+            "MMA_Scale": mma_scale,
         })
 
         if i % 50 == 0:

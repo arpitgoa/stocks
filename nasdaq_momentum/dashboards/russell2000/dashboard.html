@@ -87,14 +87,22 @@ tr:hover { background: #e9ecef !important; }
 <li>Between resets: weights drift with price, only entry/exit trades happen</li>
 </ul>
 
-<h3>6. Leveraged Comparison</h3>
+<h3>6. Position Sizing (10-Month Moving Average)</h3>
+<ul>
+<li>If NDX is <strong>above</strong> its 10-month moving average: <strong>1x full position</strong></li>
+<li>If NDX is <strong>below</strong> its 10-month moving average: <strong>0.5x half position</strong></li>
+<li>Gold months are always 1x (gold IS the protection)</li>
+<li>Effect: MaxDD improves from -33% to -19% with negligible CAGR cost</li>
+</ul>
+
+<h3>7. Leveraged Comparison</h3>
 <ul>
 <li>Same stock selection as above</li>
 <li>If a 2x leveraged single-stock ETF exists (e.g., NVDL for NVDA), use it for returns</li>
 <li>If no leveraged ETF available, use the regular stock</li>
 </ul>
 
-<h3>7. Parameters</h3>
+<h3>8. Parameters</h3>
 <table style="border-collapse:collapse;width:100%;font-size:12px;">
 <tr><td style="padding:4px 8px;border-bottom:1px solid #eee;"><strong>Stocks held</strong></td><td style="padding:4px 8px;border-bottom:1px solid #eee;">3</td></tr>
 <tr><td style="padding:4px 8px;border-bottom:1px solid #eee;"><strong>Entry rank</strong></td><td style="padding:4px 8px;border-bottom:1px solid #eee;">≤ 3</td></tr>

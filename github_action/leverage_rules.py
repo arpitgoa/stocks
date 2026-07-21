@@ -35,7 +35,7 @@ def save_state(state):
 
 def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
     """
-    Check all 4 leverage rules based on current signals and history.
+    Check all 4 leverage rules.
     
     Returns list of triggered rules with details.
     """
@@ -73,21 +73,16 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
                 "detail": f"Last month: {prev_return:+.1f}%, month before: {prev_prev_return:+.1f}%. Momentum confirmed.",
             })
     
-    # Rule 3: Two consecutive >10% months + QQQ > 200 DMA
+    # Rule 3: Two consecutive >10% months
     if prev_return is not None and prev_prev_return is not None:
         if prev_return > 10 and prev_prev_return > 10:
-            above_200 = True  # default to True if we can't check
-            if ndx_price is not None and ndx_200dma is not None:
-                above_200 = ndx_price > ndx_200dma
-            
-            if above_200:
-                triggered.append({
-                    "rule": 3,
-                    "name": "Two >10% + QQQ>200DMA",
-                    "action": "2x this month",
-                    "confidence": "92% (12/13)",
-                    "detail": f"Last 2 months: {prev_prev_return:+.1f}%, {prev_return:+.1f}%. Epic run confirmed.",
-                })
+            triggered.append({
+                "rule": 3,
+                "name": "Two >10% Months",
+                "action": "2x this month",
+                "confidence": "92% (12/13)",
+                "detail": f"Last 2 months: {prev_prev_return:+.1f}%, {prev_return:+.1f}%. Epic run confirmed.",
+            })
     
     # Rule 4: After a -10% month
     if prev_return is not None and prev_return < -10:
@@ -127,11 +122,6 @@ def format_leverage_alerts(triggered_rules):
 def update_state(signals, portfolio_return=None):
     """
     Update state file with this month's data for next run.
-    Call this AFTER generating signals.
-    
-    portfolio_return: this month's actual portfolio return (if known).
-                     On signal day we don't know it yet, so we store the signal
-                     and update return next time.
     """
     state = load_state()
     
@@ -142,7 +132,7 @@ def update_state(signals, portfolio_return=None):
         "was_gold": ndx_vix.get("go_gold", False) if ndx_vix else False,
         "portfolio": ndx_vix.get("portfolio", []) if ndx_vix else [],
         "prev_prev_return": state.get("prev_return"),
-        "prev_return": portfolio_return,  # Will be None on first run
+        "prev_return": portfolio_return,
     }
     
     save_state(new_state)

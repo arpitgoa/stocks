@@ -87,14 +87,22 @@ tr:hover { background: #e9ecef !important; }
 <li>Between resets: weights drift with price, only entry/exit trades happen</li>
 </ul>
 
-<h3>6. Leveraged Comparison</h3>
+<h3>6. Position Sizing (10-Month Moving Average)</h3>
+<ul>
+<li>If NDX is <strong>above</strong> its 10-month moving average: <strong>1x full position</strong></li>
+<li>If NDX is <strong>below</strong> its 10-month moving average: <strong>0.5x half position</strong></li>
+<li>Gold months are always 1x (gold IS the protection)</li>
+<li>Effect: MaxDD improves from -33% to -19% with negligible CAGR cost</li>
+</ul>
+
+<h3>7. Leveraged Comparison</h3>
 <ul>
 <li>Same stock selection as above</li>
 <li>If a 2x leveraged single-stock ETF exists (e.g., NVDL for NVDA), use it for returns</li>
 <li>If no leveraged ETF available, use the regular stock</li>
 </ul>
 
-<h3>7. Parameters</h3>
+<h3>8. Parameters</h3>
 <table style="border-collapse:collapse;width:100%;font-size:12px;">
 <tr><td style="padding:4px 8px;border-bottom:1px solid #eee;"><strong>Stocks held</strong></td><td style="padding:4px 8px;border-bottom:1px solid #eee;">3</td></tr>
 <tr><td style="padding:4px 8px;border-bottom:1px solid #eee;"><strong>Entry rank</strong></td><td style="padding:4px 8px;border-bottom:1px solid #eee;">≤ 3</td></tr>
@@ -124,42 +132,40 @@ tr:hover { background: #e9ecef !important; }
 <div id="yearlyChartContainer"><canvas id="yearlyChart"></canvas></div>
 <div id="stockStats"></div>
 <div id="leverageNotes" style="background:white;border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-left:4px solid #ff9800;">
-<h4 style="margin:0 0 10px 0;color:#333;">⚡ Leverage Opportunities (Not Implemented — For Consideration)</h4>
+<h4 style="margin:0 0 10px 0;color:#333;">&zap; Position Sizing &amp; Leverage Rules (Not Automated)</h4>
 <div style="font-size:12px;line-height:1.8;color:#444;">
-<p><strong>1. After Exiting Gold → Re-entering Stocks (2x that month)</strong></p>
+<p><strong>Position Sizing: 10-Month Moving Average Filter</strong></p>
 <ul style="margin:5px 0;">
-<li>Historical win rate: <strong>100%</strong> (7/7 times over 31 years)</li>
-<li>Average return that month: <strong>+13.8%</strong></li>
-<li>Triggers only ~once every 4 years</li>
-<li>Logic: When gold signal ends, the stocks selected for re-entry have built momentum while you were in gold. The re-entry catches the start of a new run.</li>
-<li>Backtested impact: <strong>+3.5% CAGR</strong> with same max drawdown (-32.7%)</li>
+<li>NDX <strong>above</strong> 10-month MA &rarr; full position (1x)</li>
+<li>NDX <strong>below</strong> 10-month MA &rarr; half position (0.5x), unless in gold or Rule 4 fires</li>
+<li>Backtested impact: CAGR stays ~40%, <strong>MaxDD improves from -32.7% to -19.3%</strong></li>
+<li>73% of months above (normal), 27% below (reduced). Below-MMA win rate is only 52%.</li>
 </ul>
-<p style="margin-top:12px;"><strong>2. After >10% Portfolio Month + Previous Month Also Green (2x next month)</strong></p>
+<p style="margin-top:12px;"><strong>Rule 1: After Exiting Gold &rarr; 2x (overrides MMA filter)</strong></p>
 <ul style="margin:5px 0;">
-<li>Historical win rate: <strong>78%</strong> (29/37 triggers over 31 years)</li>
-<li>Average next-month return: <strong>+6.3%</strong></li>
-<li>Triggers ~1-2x per year</li>
-<li>Logic: Two green months in a row where the second was >10% confirms a genuine momentum run. Losses mostly happen when +10% comes out of nowhere after a red month (dead cat bounce) — this filter removes those.</li>
-<li>Backtested impact at 2x: <strong>+7.2% CAGR</strong> (40.4% → 47.6%), same max drawdown (-32.7%)</li>
+<li>Win rate: <strong>100%</strong> (7/7) | Avg: <strong>+13.8%</strong> | ~once/4yr</li>
 </ul>
-<p style="margin-top:12px;"><strong>3. Two Consecutive >10% Months + QQQ Above 200 DMA &rarr; 2x the Third Month</strong></p>
+<p style="margin-top:12px;"><strong>Rule 2: &gt;10% Month + Prev Month Green &rarr; 2x (above MMA only)</strong></p>
 <ul style="margin:5px 0;">
-<li>Historical win rate: <strong>92%</strong> (12/13 triggers over 31 years)</li>
-<li>Average next-month return: <strong>+13.3%</strong> (wins avg), only loss was -3.9%</li>
-<li>Triggers ~once every 2-3 years (rare but highest confidence)</li>
-<li>Logic: Two back-to-back monster months with QQQ in an uptrend = confirmed epic run. Without 200 DMA filter, the losses were -16% (bear market rally fakeouts).</li>
-<li>Backtested impact at 2x: <strong>+4.7% CAGR</strong>, max drawdown stays near original (-34%)</li>
+<li>Win rate: <strong>78%</strong> (29/37) | Avg: <strong>+6.3%</strong> | ~1-2x/yr</li>
 </ul>
-<p style="margin-top:12px;"><strong>4. After a -10% Portfolio Month &rarr; 2x Next Month (Mean Reversion)</strong></p>
+<p style="margin-top:12px;"><strong>Rule 3: Two Consecutive &gt;10% + QQQ&gt;200DMA &rarr; 2x (above MMA only)</strong></p>
 <ul style="margin:5px 0;">
-<li>Historical win rate: <strong>75%</strong> (12/16 triggers over 31 years)</li>
-<li>Average next-month return: <strong>+7.3%</strong></li>
-<li>Triggers ~once every 2 years</li>
-<li>Logic: A -10% month on concentrated momentum stocks is a panic washout. They almost always bounce hard the next month. Forward 6-month returns after -10% months average +50%.</li>
-<li>Backtested impact at 2x: <strong>+4.2% CAGR</strong> (40.4% &rarr; 44.6%)</li>
-<li><strong>Max drawdown actually IMPROVES</strong> from -32.7% to -31.9% (the 2x accelerates recovery from bottoms)</li>
+<li>Win rate: <strong>92%</strong> (12/13) | Avg: <strong>+13.3%</strong> | ~once/2-3yr</li>
 </ul>
-<p style="margin-top:10px;color:#666;font-style:italic;">These rules are validated for NASDAQ-100 strategies only. Cross-universe testing shows they degrade significantly for broader indices (S&P 500, Russell, DJIA). Rules 1, 2, and 4 do not increase max drawdown. Rule 3 adds minimal DD risk (-34% vs -33%).</p>
+<p style="margin-top:12px;"><strong>Rule 4: After -10% Month &rarr; 2x (OVERRIDES MMA filter)</strong></p>
+<ul style="margin:5px 0;">
+<li>Win rate: <strong>75%</strong> (12/16) | Avg: <strong>+7.3%</strong> | ~once/2yr</li>
+<li>Fires even below 10-MMA. Mean reversion overrides trend filter.</li>
+</ul>
+<p style="margin-top:12px;"><strong>Combined (MMA + 4 Rules):</strong></p>
+<table style="border-collapse:collapse;width:100%;font-size:11px;margin:8px 0;">
+<tr style="border-bottom:1px solid #ddd;"><td style="padding:4px;"><strong>Period</strong></td><td style="padding:4px;"><strong>Original</strong></td><td style="padding:4px;"><strong>Combined</strong></td><td style="padding:4px;"><strong>MaxDD</strong></td></tr>
+<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">Full (1995-2026)</td><td style="padding:4px;">40.4%</td><td style="padding:4px;color:#28a745;"><strong>58.4%</strong></td><td style="padding:4px;color:#28a745;"><strong>-21.1%</strong></td></tr>
+<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">2015-2026</td><td style="padding:4px;">47.8%</td><td style="padding:4px;color:#28a745;"><strong>68.3%</strong></td><td style="padding:4px;">-21.1%</td></tr>
+<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">2020-2026</td><td style="padding:4px;">67.0%</td><td style="padding:4px;color:#28a745;"><strong>109.0%</strong></td><td style="padding:4px;">-15.2%</td></tr>
+</table>
+<p style="margin-top:10px;color:#666;font-style:italic;">NASDAQ-100 only. Requires margin for 2x months (~16% of months). Rules degrade on broader indices.</p>
 </div>
 </div>
 <div id="tableContainer"></div>
