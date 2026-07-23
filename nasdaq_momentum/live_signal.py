@@ -54,6 +54,9 @@ INDEX_YFINANCE_MAP = {
     "XAUUSD": "GC=F",
 }
 
+# Reverse map: yfinance ticker → Norgate name (for parquet column naming)
+YFINANCE_TO_NORGATE = {v: k for k, v in INDEX_YFINANCE_MAP.items()}
+
 # Universes where yfinance may not have the gold signal index
 # Use NDX as fallback for ratio calculation
 FALLBACK_GOLD_INDEX = {
@@ -113,6 +116,16 @@ def get_all_tickers_needed():
     return clean
 
 
+def _rename_yfinance_to_norgate(df):
+    """Rename yfinance signal columns to Norgate names so backtest engine can find them."""
+    rename_map = {yf_name: norgate_name 
+                  for yf_name, norgate_name in YFINANCE_TO_NORGATE.items() 
+                  if yf_name in df.columns}
+    if rename_map:
+        df = df.rename(columns=rename_map)
+    return df
+
+
 def load_cached_prices():
     """Load the main prices parquet (shared with backtest & dashboard)."""
     if PRICES_PARQUET.exists():
@@ -147,6 +160,30 @@ def update_prices(force_refresh=False):
             print(f"  ✅ Prices current (last: {last_date.date()}, {cached.shape[1]} tickers)")
             return cached
         
+        # Skip download on weekends (no new trading data expected)
+        weekday = today.weekday()  # 0=Mon, 5=Sat, 6=Sun
+        if weekday == 6:  # Sunday
+            # Data through Friday is sufficient
+            if days_missing <= 2:
+                print(f"  ✅ Weekend (Sun) — data through {last_date.date()} is current. Skipping download.")
+                return cached
+        elif weekday == 5:  # Saturday
+            if days_missing <= 1:
+                print(f"  ✅ Weekend (Sat) — data through {last_date.date()} is current. Skipping download.")
+                return cached
+        
+        # Skip if last data is from today or the most recent trading day
+        # (Mon morning before market open: last Friday's data is fine)
+        if weekday == 0 and days_missing <= 3:
+            # Monday: Friday data (3 days ago at most) is fine before market close
+            from datetime import time as dtime
+            now_time = datetime.now().time()
+            if now_time < dtime(16, 30):  # Before 4:30 PM (market close + buffer)
+                # Check if last_date is the previous Friday
+                if last_date.weekday() == 4:  # Friday
+                    print(f"  ✅ Monday pre-market — data through {last_date.date()} (Fri) is current. Skipping download.")
+                    return cached
+        
         # Incremental: one single call for all current constituents + signals
         print(f"  📥 Last data: {last_date.date()} → downloading {days_missing} missing day(s)...")
         live_tickers = get_all_tickers_needed()  # distinct current members + signals
@@ -165,6 +202,7 @@ def update_prices(force_refresh=False):
                 new_prices = new_data
             
             if len(new_prices) > 0:
+                new_prices = _rename_yfinance_to_norgate(new_prices)
                 combined = pd.concat([cached, new_prices]).sort_index()
                 combined = combined[~combined.index.duplicated(keep="last")]
                 save_prices(combined)
@@ -204,6 +242,7 @@ def update_prices(force_refresh=False):
     
     if not all_prices.empty:
         all_prices.sort_index(inplace=True)
+        all_prices = _rename_yfinance_to_norgate(all_prices)
         
         # If existing parquet has historical data, merge with it
         if cached is not None:
@@ -353,9 +392,12 @@ def generate_signal(universe_name, current_holdings=None):
     if yf_gold_idx is None or yf_gold_idx not in signal_data.columns:
         yf_gold_idx = FALLBACK_GOLD_INDEX.get(gold_signal_index)
     
-    gold_price = signal_data["GC=F"].dropna().iloc[-1] if "GC=F" in signal_data.columns else None
-    index_price = signal_data[yf_gold_idx].dropna().iloc[-1] if yf_gold_idx and yf_gold_idx in signal_data.columns else None
-    vix_value = signal_data["^VIX"].dropna().iloc[-1] if "^VIX" in signal_data.columns else None
+    gold_series = signal_data["GC=F"].dropna() if "GC=F" in signal_data.columns else pd.Series(dtype=float)
+    gold_price = gold_series.iloc[-1] if len(gold_series) > 0 else None
+    index_series = signal_data[yf_gold_idx].dropna() if yf_gold_idx and yf_gold_idx in signal_data.columns else pd.Series(dtype=float)
+    index_price = index_series.iloc[-1] if len(index_series) > 0 else None
+    vix_series = signal_data["^VIX"].dropna() if "^VIX" in signal_data.columns else pd.Series(dtype=float)
+    vix_value = vix_series.iloc[-1] if len(vix_series) > 0 else None
     
     gold_ratio = index_price / gold_price if (index_price and gold_price and gold_price > 0) else None
     

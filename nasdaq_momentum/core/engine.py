@@ -217,7 +217,16 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
             )
         else:
             raw_return = config.get("raw_return", False)
-            scores = calculate_momentum_scores(prices, universe, cutoff_idx, raw_return=raw_return)
+            # Custom base lookback (default 252/126)
+            base_long = config.get("lookback_long", 252)
+            base_short = config.get("lookback_short", 126)
+            if base_long != 252 or base_short != 126:
+                # Non-standard lookback — compute live
+                scores = score_with_custom_lookback(
+                    prices, universe, rebal_date, base_long, base_short
+                )
+            else:
+                scores = calculate_momentum_scores(prices, universe, cutoff_idx, raw_return=raw_return)
 
         if scores.empty:
             portfolio_value += monthly_contribution

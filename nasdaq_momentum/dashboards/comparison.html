@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETF vs NDX Momentum — Yearly Returns Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      padding: 24px;
+    }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: #fff; }
+    .subtitle { color: #888; margin-bottom: 32px; font-size: 12px; }
+    h2 { font-size: 15px; font-weight: 600; margin: 32px 0 12px; color: #ccc;
+          text-transform: uppercase; letter-spacing: 0.05em; }
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 28px;
+      overflow-x: auto;
+    }
+    /* Summary table */
+    table.summary { width: 100%; border-collapse: collapse; }
+    table.summary th {
+      text-align: left; padding: 8px 12px;
+      border-bottom: 2px solid #333;
+      color: #aaa; font-weight: 600; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    table.summary td { padding: 7px 12px; border-bottom: 1px solid #252830; }
+    table.summary tr:hover td { background: #22263a; }
+    table.summary .strategy-row td { background: #1e2438; }
+    table.summary .strategy-row:hover td { background: #252c45; }
+    /* Heatmap */
+    table.heatmap { border-collapse: collapse; min-width: 100%; white-space: nowrap; }
+    table.heatmap th {
+      padding: 7px 10px; background: #1e2030; color: #aaa;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      border-bottom: 2px solid #333; position: sticky; top: 0; z-index: 2;
+    }
+    table.heatmap td {
+      padding: 6px 10px; text-align: center; font-size: 12px;
+      border: 1px solid #2a2d3a;
+    }
+    table.heatmap td:first-child { text-align: left; background: #1a1d27 !important;
+      color: #ccc; font-size: 12px; position: sticky; left: 0; z-index: 1; }
+    table.heatmap .na { color: #555; background: #1a1d27 !important; }
+    .ytd {
+      background: #2196F3; color: #fff; font-size: 9px; padding: 1px 4px;
+      border-radius: 3px; margin-left: 4px; vertical-align: middle;
+    }
+    /* Chart containers */
+    .chart-wrap { position: relative; }
+    canvas { max-height: 440px; }
+    /* Scrollable heatmap */
+    .heatmap-scroll { overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+<h1>ETF &amp; Strategy Yearly Returns Dashboard</h1>
+<p class="subtitle">
+  ETFs: SPMO, QQQ, SPY, IWM, TQQQ, UPRO, TNA, XMMO, XSMO &nbsp;|&nbsp; Strategy: NDX Momentum &nbsp;|&nbsp;
+  Generated: July 21, 2026
+</p>
+
+<!-- ── Section 1: Summary Stats ─────────────────────────────────────────── -->
+<h2>Summary Statistics</h2>
+<div class="card">
+  <table class="summary">
+    <thead>
+      <tr>
+        <th>Ticker / Strategy</th>
+        <th>Inception</th>
+        <th>CAGR</th>
+        <th>Max DD</th>
+        <th>Sharpe</th>
+        <th>Best Year</th>
+        <th>Worst Year</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr>
+          <td><strong>SPMO</strong></td>
+          <td>2015-10-12</td>
+          <td>19.3%</td>
+          <td>-30.9%</td>
+          <td>0.97</td>
+          <td style="color:#388E3C">+45.82%</td>
+          <td style="color:#B71C1C">-10.45%</td>
+        </tr>
+        <tr>
+          <td><strong>QQQ</strong></td>
+          <td>2008-01-02</td>
+          <td>16.3%</td>
+          <td>-49.4%</td>
+          <td>0.79</td>
+          <td style="color:#388E3C">+54.86%</td>
+          <td style="color:#B71C1C">-32.58%</td>
+        </tr>
+        <tr>
+          <td><strong>SPY</strong></td>
+          <td>2008-01-02</td>
+          <td>11.3%</td>
+          <td>-51.9%</td>
+          <td>0.64</td>
+          <td style="color:#388E3C">+32.31%</td>
+          <td style="color:#B71C1C">-18.18%</td>
+        </tr>
+        <tr>
+          <td><strong>IWM</strong></td>
+          <td>2008-01-02</td>
+          <td>9.1%</td>
+          <td>-54.3%</td>
+          <td>0.48</td>
+          <td style="color:#388E3C">+38.7%</td>
+          <td style="color:#B71C1C">-20.48%</td>
+        </tr>
+        <tr>
+          <td><strong>TQQQ</strong></td>
+          <td>2010-02-11</td>
+          <td>42.7%</td>
+          <td>-81.7%</td>
+          <td>0.89</td>
+          <td style="color:#388E3C">+198.05%</td>
+          <td style="color:#B71C1C">-79.09%</td>
+        </tr>
+        <tr>
+          <td><strong>UPRO</strong></td>
+          <td>2009-06-25</td>
+          <td>32.7%</td>
+          <td>-76.8%</td>
+          <td>0.81</td>
+          <td style="color:#388E3C">+118.49%</td>
+          <td style="color:#B71C1C">-56.84%</td>
+        </tr>
+        <tr>
+          <td><strong>TNA</strong></td>
+          <td>2008-11-19</td>
+          <td>16.3%</td>
+          <td>-88.1%</td>
+          <td>0.57</td>
+          <td style="color:#388E3C">+146.49%</td>
+          <td style="color:#B71C1C">-62.48%</td>
+        </tr>
+        <tr>
+          <td><strong>XMMO</strong></td>
+          <td>2008-01-02</td>
+          <td>11.4%</td>
+          <td>-54.5%</td>
+          <td>0.58</td>
+          <td style="color:#388E3C">+38.03%</td>
+          <td style="color:#B71C1C">-16.02%</td>
+        </tr>
+        <tr>
+          <td><strong>XSMO</strong></td>
+          <td>2008-01-02</td>
+          <td>9.9%</td>
+          <td>-53.1%</td>
+          <td>0.51</td>
+          <td style="color:#388E3C">+33.3%</td>
+          <td style="color:#B71C1C">-15.45%</td>
+        </tr>
+        <tr class="strategy-row">
+          <td><strong>NDX Momentum</strong></td>
+          <td>2008</td>
+          <td>32.8%</td>
+          <td>—</td>
+          <td>—</td>
+          <td style="color:#388E3C">+156.4%</td>
+          <td style="color:#B71C1C">0.6%</td>
+        </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Section 2: Grouped Bar Chart ─────────────────────────────────────── -->
+<h2>Yearly Returns — Grouped Bar Chart</h2>
+<div class="card chart-wrap">
+  <canvas id="barChart"></canvas>
+</div>
+
+<!-- ── Section 3: Heatmap ────────────────────────────────────────────────── -->
+<h2>Yearly Returns Heatmap</h2>
+<div class="card heatmap-scroll">
+  <table class="heatmap">
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>SPMO</th><th>QQQ</th><th>SPY</th><th>IWM</th><th>TQQQ</th><th>UPRO</th><th>TNA</th><th>XMMO</th><th>XSMO</th><th>NDX Momentum</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>2009</strong></td><td class="na">—</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+54.7%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+26.4%</td><td style="background:#C8E6C9;color:#2E7D32">+28.5%</td><td class="na">—</td><td class="na">—</td><td style="background:#C8E6C9;color:#2E7D32">+42.4%</td><td style="background:#C8E6C9;color:#2E7D32">+23.6%</td><td style="background:#DCEDC8;color:#388E3C">+17.5%</td><td style="background:#C8E6C9;color:#2E7D32">+33.2%</td></tr><tr><td><strong>2010</strong></td><td class="na">—</td><td style="background:#C8E6C9;color:#2E7D32">+20.1%</td><td style="background:#DCEDC8;color:#388E3C">+15.1%</td><td style="background:#C8E6C9;color:#2E7D32">+26.9%</td><td class="na">—</td><td style="background:#C8E6C9;color:#2E7D32">+36.3%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+69.8%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+29.6%</td><td style="background:#C8E6C9;color:#2E7D32">+27.3%</td><td style="background:#DCEDC8;color:#388E3C">+16.1%</td></tr><tr><td><strong>2011</strong></td><td class="na">—</td><td style="background:#DCEDC8;color:#388E3C"><strong>+3.5%</strong></td><td style="background:#DCEDC8;color:#388E3C">+1.9%</td><td style="background:#FFCDD2;color:#B71C1C">-4.4%</td><td style="background:#FFCDD2;color:#B71C1C">-8.1%</td><td style="background:#FFCDD2;color:#B71C1C">-11.9%</td><td style="background:#EF9A9A;color:#7F0000">-38.1%</td><td style="background:#FFCDD2;color:#B71C1C">-5.7%</td><td style="background:#FFCDD2;color:#B71C1C">-1.4%</td><td style="background:#DCEDC8;color:#388E3C">+0.6%</td></tr><tr><td><strong>2012</strong></td><td class="na">—</td><td style="background:#DCEDC8;color:#388E3C">+18.1%</td><td style="background:#DCEDC8;color:#388E3C">+16.0%</td><td style="background:#DCEDC8;color:#388E3C">+16.7%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+52.3%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+46.8%</td><td style="background:#C8E6C9;color:#2E7D32">+42.6%</td><td style="background:#DCEDC8;color:#388E3C">+14.7%</td><td style="background:#DCEDC8;color:#388E3C">+13.6%</td><td style="background:#C8E6C9;color:#2E7D32">+22.0%</td></tr><tr><td><strong>2013</strong></td><td class="na">—</td><td style="background:#C8E6C9;color:#2E7D32">+36.6%</td><td style="background:#C8E6C9;color:#2E7D32">+32.3%</td><td style="background:#C8E6C9;color:#2E7D32">+38.7%</td><td style="background:#E8F5E9;color:#1B5E20">+139.7%</td><td style="background:#E8F5E9;color:#1B5E20">+118.5%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+146.5%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+27.5%</td><td style="background:#C8E6C9;color:#2E7D32">+33.3%</td><td style="background:#C8E6C9;color:#2E7D32">+27.8%</td></tr><tr><td><strong>2014</strong></td><td class="na">—</td><td style="background:#DCEDC8;color:#388E3C">+19.2%</td><td style="background:#DCEDC8;color:#388E3C">+13.5%</td><td style="background:#DCEDC8;color:#388E3C">+5.0%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+57.1%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+38.0%</td><td style="background:#DCEDC8;color:#388E3C">+5.2%</td><td style="background:#DCEDC8;color:#388E3C">+10.6%</td><td style="background:#DCEDC8;color:#388E3C">+5.8%</td><td style="background:#DCEDC8;color:#388E3C">+18.7%</td></tr><tr><td><strong>2015</strong></td><td class="na">—</td><td style="background:#DCEDC8;color:#388E3C">+9.4%</td><td style="background:#DCEDC8;color:#388E3C">+1.2%</td><td style="background:#FFCDD2;color:#B71C1C">-4.5%</td><td style="background:#DCEDC8;color:#388E3C">+17.2%</td><td style="background:#FFCDD2;color:#B71C1C">-5.2%</td><td style="background:#EF9A9A;color:#7F0000">-21.5%</td><td style="background:#FFCDD2;color:#B71C1C">-4.6%</td><td style="background:#FFCDD2;color:#B71C1C">-0.5%</td><td style="background:#C8E6C9;color:#2E7D32"><strong>+22.0%</strong></td></tr><tr><td><strong>2016</strong></td><td style="background:#DCEDC8;color:#388E3C">+7.2%</td><td style="background:#DCEDC8;color:#388E3C">+7.1%</td><td style="background:#DCEDC8;color:#388E3C">+12.0%</td><td style="background:#C8E6C9;color:#2E7D32">+21.6%</td><td style="background:#DCEDC8;color:#388E3C">+11.4%</td><td style="background:#C8E6C9;color:#2E7D32">+30.8%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+59.2%</strong></td><td style="background:#DCEDC8;color:#388E3C">+3.4%</td><td style="background:#DCEDC8;color:#388E3C">+6.4%</td><td style="background:#C8E6C9;color:#2E7D32">+30.4%</td></tr><tr><td><strong>2017</strong></td><td style="background:#C8E6C9;color:#2E7D32">+27.8%</td><td style="background:#C8E6C9;color:#2E7D32">+32.7%</td><td style="background:#C8E6C9;color:#2E7D32">+21.7%</td><td style="background:#DCEDC8;color:#388E3C">+14.6%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+118.1%</strong></td><td style="background:#E8F5E9;color:#1B5E20">+71.4%</td><td style="background:#C8E6C9;color:#2E7D32">+39.1%</td><td style="background:#C8E6C9;color:#2E7D32">+37.2%</td><td style="background:#C8E6C9;color:#2E7D32">+24.0%</td><td style="background:#C8E6C9;color:#2E7D32">+41.6%</td></tr><tr><td><strong>2018</strong></td><td style="background:#FFCDD2;color:#B71C1C">-0.9%</td><td style="background:#FFCDD2;color:#B71C1C">-0.1%</td><td style="background:#FFCDD2;color:#B71C1C">-4.6%</td><td style="background:#FFCDD2;color:#B71C1C">-11.1%</td><td style="background:#FFCDD2;color:#B71C1C">-19.8%</td><td style="background:#EF9A9A;color:#7F0000">-25.1%</td><td style="background:#EF9A9A;color:#7F0000">-39.9%</td><td style="background:#DCEDC8;color:#388E3C"><strong>+6.1%</strong></td><td style="background:#FFCDD2;color:#B71C1C">-3.4%</td><td style="background:#DCEDC8;color:#388E3C">+5.6%</td></tr><tr><td><strong>2019</strong></td><td style="background:#C8E6C9;color:#2E7D32">+25.9%</td><td style="background:#C8E6C9;color:#2E7D32">+39.0%</td><td style="background:#C8E6C9;color:#2E7D32">+31.2%</td><td style="background:#C8E6C9;color:#2E7D32">+25.4%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+133.8%</strong></td><td style="background:#E8F5E9;color:#1B5E20">+102.3%</td><td style="background:#E8F5E9;color:#1B5E20">+71.9%</td><td style="background:#C8E6C9;color:#2E7D32">+36.8%</td><td style="background:#C8E6C9;color:#2E7D32">+28.6%</td><td style="background:#DCEDC8;color:#388E3C">+11.7%</td></tr><tr><td><strong>2020</strong></td><td style="background:#C8E6C9;color:#2E7D32">+27.8%</td><td style="background:#C8E6C9;color:#2E7D32">+48.4%</td><td style="background:#DCEDC8;color:#388E3C">+18.3%</td><td style="background:#C8E6C9;color:#2E7D32">+20.0%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+110.0%</strong></td><td style="background:#DCEDC8;color:#388E3C">+10.1%</td><td style="background:#FFCDD2;color:#B71C1C">-7.8%</td><td style="background:#C8E6C9;color:#2E7D32">+28.9%</td><td style="background:#C8E6C9;color:#2E7D32">+21.6%</td><td style="background:#E8F5E9;color:#1B5E20">+88.2%</td></tr><tr><td><strong>2021</strong></td><td style="background:#C8E6C9;color:#2E7D32">+22.5%</td><td style="background:#C8E6C9;color:#2E7D32">+27.4%</td><td style="background:#C8E6C9;color:#2E7D32">+28.7%</td><td style="background:#DCEDC8;color:#388E3C">+14.5%</td><td style="background:#E8F5E9;color:#1B5E20">+83.0%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+98.6%</strong></td><td style="background:#C8E6C9;color:#2E7D32">+27.9%</td><td style="background:#DCEDC8;color:#388E3C">+16.6%</td><td style="background:#DCEDC8;color:#388E3C">+19.2%</td><td style="background:#C8E6C9;color:#2E7D32">+22.8%</td></tr><tr><td><strong>2022</strong></td><td style="background:#FFCDD2;color:#B71C1C">-10.4%</td><td style="background:#EF9A9A;color:#7F0000">-32.6%</td><td style="background:#FFCDD2;color:#B71C1C">-18.2%</td><td style="background:#EF9A9A;color:#7F0000">-20.5%</td><td style="background:#EF9A9A;color:#7F0000">-79.1%</td><td style="background:#EF9A9A;color:#7F0000">-56.8%</td><td style="background:#EF9A9A;color:#7F0000">-62.5%</td><td style="background:#FFCDD2;color:#B71C1C">-16.0%</td><td style="background:#FFCDD2;color:#B71C1C">-15.4%</td><td style="background:#DCEDC8;color:#388E3C"><strong>+19.6%</strong></td></tr><tr><td><strong>2023</strong></td><td style="background:#DCEDC8;color:#388E3C">+17.6%</td><td style="background:#E8F5E9;color:#1B5E20">+54.9%</td><td style="background:#C8E6C9;color:#2E7D32">+26.2%</td><td style="background:#DCEDC8;color:#388E3C">+16.8%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+198.1%</strong></td><td style="background:#E8F5E9;color:#1B5E20">+68.5%</td><td style="background:#C8E6C9;color:#2E7D32">+26.2%</td><td style="background:#C8E6C9;color:#2E7D32">+20.4%</td><td style="background:#C8E6C9;color:#2E7D32">+21.6%</td><td style="background:#DCEDC8;color:#388E3C">+3.4%</td></tr><tr><td><strong>2024</strong></td><td style="background:#C8E6C9;color:#2E7D32">+45.8%</td><td style="background:#C8E6C9;color:#2E7D32">+25.6%</td><td style="background:#C8E6C9;color:#2E7D32">+24.9%</td><td style="background:#DCEDC8;color:#388E3C">+11.4%</td><td style="background:#E8F5E9;color:#1B5E20">+58.3%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+63.6%</strong></td><td style="background:#DCEDC8;color:#388E3C">+7.2%</td><td style="background:#C8E6C9;color:#2E7D32">+38.0%</td><td style="background:#DCEDC8;color:#388E3C">+17.4%</td><td style="background:#C8E6C9;color:#2E7D32">+27.2%</td></tr><tr><td><strong>2025</strong></td><td style="background:#C8E6C9;color:#2E7D32">+26.6%</td><td style="background:#C8E6C9;color:#2E7D32">+20.8%</td><td style="background:#DCEDC8;color:#388E3C">+17.7%</td><td style="background:#DCEDC8;color:#388E3C">+12.7%</td><td style="background:#C8E6C9;color:#2E7D32">+34.4%</td><td style="background:#C8E6C9;color:#2E7D32">+31.9%</td><td style="background:#DCEDC8;color:#388E3C">+9.8%</td><td style="background:#DCEDC8;color:#388E3C">+13.0%</td><td style="background:#DCEDC8;color:#388E3C">+9.8%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+131.3%</strong></td></tr><tr><td><strong>2026</strong> <span class='ytd'>YTD</span></td><td style="background:#C8E6C9;color:#2E7D32">+25.6%</td><td style="background:#DCEDC8;color:#388E3C">+15.6%</td><td style="background:#DCEDC8;color:#388E3C">+10.3%</td><td style="background:#C8E6C9;color:#2E7D32">+20.5%</td><td style="background:#C8E6C9;color:#2E7D32">+35.6%</td><td style="background:#C8E6C9;color:#2E7D32">+22.9%</td><td style="background:#E8F5E9;color:#1B5E20">+55.9%</td><td style="background:#DCEDC8;color:#388E3C">+15.9%</td><td style="background:#C8E6C9;color:#2E7D32">+23.0%</td><td style="background:#E8F5E9;color:#1B5E20"><strong>+156.4%</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Section 4: Growth of $10,000 ─────────────────────────────────────── -->
+<h2>Growth of $10,000 (Log Scale)</h2>
+<div class="card chart-wrap">
+  <canvas id="lineChart"></canvas>
+</div>
+
+<script>
+// ── Shared data ──────────────────────────────────────────────────────────────
+const YEARS  = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const nullSafe = v => v === null || v === undefined ? null : v;
+
+// ── Bar Chart ─────────────────────────────────────────────────────────────────
+(function() {
+  const datasets = [{"label": "SPMO", "data": [null, null, null, null, null, null, null, 7.17, 27.76, -0.92, 25.93, 27.8, 22.51, -10.45, 17.56, 45.82, 26.58, 25.57], "backgroundColor": "#2196F3", "borderColor": "#2196F3", "borderWidth": 1}, {"label": "QQQ", "data": [54.68, 20.14, 3.48, 18.11, 36.63, 19.18, 9.44, 7.1, 32.66, -0.13, 38.96, 48.41, 27.42, -32.58, 54.86, 25.58, 20.77, 15.59], "backgroundColor": "#FF5722", "borderColor": "#FF5722", "borderWidth": 1}, {"label": "SPY", "data": [26.35, 15.06, 1.9, 15.99, 32.31, 13.46, 1.23, 12.0, 21.71, -4.57, 31.22, 18.33, 28.73, -18.18, 26.18, 24.89, 17.72, 10.26], "backgroundColor": "#4CAF50", "borderColor": "#4CAF50", "borderWidth": 1}, {"label": "IWM", "data": [28.49, 26.92, -4.43, 16.7, 38.7, 5.04, -4.48, 21.59, 14.58, -11.12, 25.39, 20.03, 14.54, -20.48, 16.83, 11.38, 12.66, 20.5], "backgroundColor": "#9C27B0", "borderColor": "#9C27B0", "borderWidth": 1}, {"label": "TQQQ", "data": [null, null, -8.05, 52.29, 139.73, 57.09, 17.23, 11.38, 118.06, -19.79, 133.83, 110.05, 82.98, -79.09, 198.05, 58.27, 34.35, 35.65], "backgroundColor": "#FF9800", "borderColor": "#FF9800", "borderWidth": 1}, {"label": "UPRO", "data": [null, 36.33, -11.88, 46.8, 118.49, 38.01, -5.24, 30.78, 71.37, -25.11, 102.3, 10.09, 98.64, -56.84, 68.53, 63.57, 31.88, 22.87], "backgroundColor": "#00BCD4", "borderColor": "#00BCD4", "borderWidth": 1}, {"label": "TNA", "data": [42.36, 69.8, -38.09, 42.64, 146.49, 5.21, -21.5, 59.22, 39.15, -39.89, 71.88, -7.82, 27.88, -62.48, 26.24, 7.21, 9.82, 55.92], "backgroundColor": "#F44336", "borderColor": "#F44336", "borderWidth": 1}, {"label": "XMMO", "data": [23.61, 29.58, -5.74, 14.73, 27.48, 10.61, -4.58, 3.4, 37.19, 6.11, 36.79, 28.85, 16.63, -16.02, 20.39, 38.03, 13.04, 15.88], "backgroundColor": "#8BC34A", "borderColor": "#8BC34A", "borderWidth": 1}, {"label": "XSMO", "data": [17.54, 27.31, -1.36, 13.57, 33.3, 5.79, -0.45, 6.43, 23.96, -3.44, 28.65, 21.65, 19.19, -15.45, 21.55, 17.44, 9.81, 23.0], "backgroundColor": "#3F51B5", "borderColor": "#3F51B5", "borderWidth": 1}, {"label": "NDX Momentum", "data": [33.2, 16.07, 0.63, 22.01, 27.82, 18.67, 21.96, 30.39, 41.59, 5.64, 11.72, 88.19, 22.79, 19.6, 3.44, 27.18, 131.31, 156.43], "backgroundColor": "#E91E63", "borderColor": "#E91E63", "borderWidth": 1}];
+  // replace null-ish with null for Chart.js
+  datasets.forEach(ds => { ds.data = ds.data.map(nullSafe); });
+
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: { labels: YEARS.map(String), datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              if (v === null) return `${ctx.dataset.label}: N/A`;
+              return `${ctx.dataset.label}: ${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: '#222' },
+        },
+        y: {
+          ticks: {
+            color: '#888', font: { size: 11 },
+            callback: v => v + '%'
+          },
+          grid: { color: '#2a2d3a' },
+          afterBuildTicks: axis => {
+            // ensure -50, 0, +50, +100 are always shown
+            const extras = [-50, 0, 50, 100];
+            const existing = new Set(axis.ticks.map(t => t.value));
+            extras.forEach(e => { if (!existing.has(e)) axis.ticks.push({ value: e }); });
+            axis.ticks.sort((a, b) => a.value - b.value);
+          },
+        }
+      }
+    }
+  });
+})();
+
+// ── Line Chart (log scale) ────────────────────────────────────────────────────
+(function() {
+  const datasets = [{"label": "SPMO", "data": [null, null, null, null, null, null, null, 10717.0, 13692.04, 13566.07, 17083.76, 21833.04, 26747.66, 23952.53, 28158.59, 41060.86, 51974.83, 65264.79], "borderColor": "#2196F3", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "QQQ", "data": [15468.0, 18583.26, 19229.95, 22712.5, 31032.08, 36984.04, 40475.33, 43349.08, 57506.89, 57432.13, 79807.69, 118442.59, 150919.55, 101749.96, 157569.99, 197876.39, 238975.32, 276231.57], "borderColor": "#FF5722", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "SPY", "data": [12635.0, 14537.83, 14814.05, 17182.82, 22734.58, 25794.66, 26111.93, 29245.37, 35594.53, 33967.86, 44572.63, 52742.8, 67895.8, 55552.34, 70095.95, 87542.83, 103055.42, 113628.9], "borderColor": "#4CAF50", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "IWM", "data": [12849.0, 16307.95, 15585.51, 18188.29, 25227.16, 26498.6, 25311.47, 30776.21, 35263.39, 31342.1, 39299.85, 47171.62, 54030.37, 42964.95, 50195.95, 55908.25, 62986.23, 75898.41], "borderColor": "#9C27B0", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "TQQQ", "data": [null, null, 9195.0, 14003.07, 33569.55, 52734.4, 61820.54, 68855.72, 150146.78, 120432.73, 281607.86, 591517.32, 1082358.39, 226321.14, 674550.15, 1067610.53, 1434334.75, 1945675.08], "borderColor": "#FF9800", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "UPRO", "data": [null, 13633.0, 12013.4, 17635.67, 38532.18, 53178.26, 50391.72, 65902.29, 112936.75, 84578.33, 171101.96, 188366.15, 374170.52, 161492.0, 272162.46, 445176.14, 587098.3, 721367.68], "borderColor": "#00BCD4", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "TNA", "data": [14236.0, 24172.73, 14965.34, 21346.56, 52617.12, 55358.48, 43456.4, 69191.29, 96279.67, 57873.71, 99473.34, 91694.52, 117258.95, 43995.56, 55539.99, 59544.43, 65391.69, 101958.72], "borderColor": "#F44336", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "XMMO", "data": [12361.0, 16017.38, 15097.99, 17321.92, 22081.98, 24424.88, 23306.22, 24098.63, 33060.91, 35080.94, 47987.21, 61831.52, 72114.11, 60561.43, 72909.9, 100637.54, 113760.67, 131825.87], "borderColor": "#8BC34A", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "XSMO", "data": [11754.0, 14964.02, 14760.51, 16763.51, 22345.76, 23639.57, 23533.2, 25046.38, 31047.49, 29979.46, 38568.58, 46918.67, 55922.37, 47282.36, 57471.71, 67494.77, 74116.01, 91162.7], "borderColor": "#3F51B5", "backgroundColor": "transparent", "borderWidth": 1.5, "borderDash": [], "pointRadius": 3, "tension": 0.1}, {"label": "NDX Momentum", "data": [13320.0, 15460.52, 15557.93, 18982.22, 24263.08, 28793.0, 35115.94, 45787.67, 64830.77, 68487.22, 76513.92, 143991.55, 176807.23, 211461.44, 218735.72, 278188.08, 643476.85, 1650067.7], "borderColor": "#E91E63", "backgroundColor": "transparent", "borderWidth": 3, "borderDash": [6, 3], "pointRadius": 3, "tension": 0.1}];
+  datasets.forEach(ds => { ds.data = ds.data.map(nullSafe); });
+
+  new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: { labels: YEARS.map(String), datasets },
+    options: {
+      responsive: true,
+      spanGaps: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: '#ccc', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              if (v === null) return null;
+              return `${ctx.dataset.label}: $${v.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: '#222' },
+        },
+        y: {
+          type: 'logarithmic',
+          ticks: {
+            color: '#888', font: { size: 11 },
+            callback: v => '$' + v.toLocaleString()
+          },
+          grid: { color: '#2a2d3a' },
+        }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
