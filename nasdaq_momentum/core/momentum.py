@@ -56,17 +56,20 @@ def _get_precomputed_by_date():
 # SCORE NORMALIZATION
 # ============================================================
 
-def _normalize_scores(df):
+def _normalize_scores(df, weight_12=0.7, weight_6=0.3):
     """
     Apply Z-score normalization and compute final momentum score.
     
     Input df must have columns: Ticker, MR_12, MR_6
     Returns df with added: Z_12, Z_6, Weighted_Z, Momentum_Score
+    
+    Default blend: 70% 12M + 30% 6M (favors sustained trend).
+    VIX>30 fast-lookback path passes 0.5/0.5 for more responsive scoring.
     """
     df = df.copy()
     df["Z_12"] = (df["MR_12"] - df["MR_12"].mean()) / df["MR_12"].std()
     df["Z_6"] = (df["MR_6"] - df["MR_6"].mean()) / df["MR_6"].std()
-    df["Weighted_Z"] = 0.5 * df["Z_12"] + 0.5 * df["Z_6"]
+    df["Weighted_Z"] = weight_12 * df["Z_12"] + weight_6 * df["Z_6"]
     df["Momentum_Score"] = df["Weighted_Z"].apply(
         lambda z: (1 + z) if z >= 0 else 1 / (1 - z)
     )
@@ -79,7 +82,7 @@ def _normalize_scores(df):
 
 def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
                        lookback_long=252, lookback_short=126, skip_days=5,
-                       raw_return=False):
+                       raw_return=False, weight_12=0.7, weight_6=0.3):
     """
     Calculate momentum scores from raw price data.
     
@@ -143,7 +146,7 @@ def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
     if not results:
         return pd.DataFrame()
     
-    return _normalize_scores(pd.DataFrame(results))
+    return _normalize_scores(pd.DataFrame(results), weight_12=weight_12, weight_6=weight_6)
 
 
 # ============================================================
@@ -151,7 +154,8 @@ def _score_from_prices(prices_df, universe_tickers, cutoff_idx,
 # ============================================================
 
 def calculate_momentum_scores(prices_df, universe_tickers, cutoff_idx,
-                              min_history=252, skip_days=5, raw_return=False):
+                              min_history=252, skip_days=5, raw_return=False,
+                              weight_12=0.7, weight_6=0.3):
     """
     Calculate momentum scores — uses precomputed parquet if available,
     falls back to live calculation from prices.
@@ -163,6 +167,8 @@ def calculate_momentum_scores(prices_df, universe_tickers, cutoff_idx,
         min_history: Minimum required price history (default 252)
         skip_days: Skip last N trading days (default 5)
         raw_return: If True, use raw returns without vol-adjustment
+        weight_12: Weight for 12M Z-score (default 0.7)
+        weight_6: Weight for 6M Z-score (default 0.3)
         
     Returns:
         DataFrame with Ticker, MR_12, MR_6, Momentum_Score, sorted desc
@@ -184,14 +190,17 @@ def calculate_momentum_scores(prices_df, universe_tickers, cutoff_idx,
             subset = by_date[nearest]
             subset = subset[subset["Ticker"].isin(universe_tickers)].copy()
             if len(subset) >= 3:
-                return _normalize_scores(subset[["Ticker", "MR_12", "MR_6"]])
+                return _normalize_scores(subset[["Ticker", "MR_12", "MR_6"]],
+                                         weight_12=weight_12, weight_6=weight_6)
 
     # Fallback: live calculation with standard lookback
-    return _score_from_prices(prices_df, universe_tickers, cutoff_idx, 252, 126, skip_days)
+    return _score_from_prices(prices_df, universe_tickers, cutoff_idx, 252, 126, skip_days,
+                              weight_12=weight_12, weight_6=weight_6)
 
 
 def score_with_custom_lookback(prices_df, universe_tickers, rebal_date,
-                               lookback_long=126, lookback_short=42, skip_days=5):
+                               lookback_long=126, lookback_short=42, skip_days=5,
+                               weight_12=0.5, weight_6=0.5):
     """
     Score with custom lookback periods (used for VIX-adaptive mode).
     Always uses live calculation (precomputed only has 252/126).
@@ -203,6 +212,8 @@ def score_with_custom_lookback(prices_df, universe_tickers, rebal_date,
         lookback_long: Custom long lookback (default 126 = 6M)
         lookback_short: Custom short lookback (default 42 = 2M)
         skip_days: Skip last N days (default 5)
+        weight_12: Weight for long Z-score (default 0.5 for fast mode)
+        weight_6: Weight for short Z-score (default 0.5 for fast mode)
     """
     results = []
     for ticker in universe_tickers:
@@ -240,4 +251,4 @@ def score_with_custom_lookback(prices_df, universe_tickers, rebal_date,
     
     if not results:
         return pd.DataFrame()
-    return _normalize_scores(pd.DataFrame(results))
+    return _normalize_scores(pd.DataFrame(results), weight_12=weight_12, weight_6=weight_6)

@@ -212,21 +212,29 @@ def _run_monthly_loop(prices, rebal_dates, date_to_idx, membership_lookup,
                 custom_lookback = (config.get("vix_fast_long", 126), config.get("vix_fast_short", 42))
 
         if custom_lookback:
+            # VIX fast mode — use vix_momentum_blend if specified
+            vix_blend = config.get("vix_momentum_blend", (0.5, 0.5))
             scores = score_with_custom_lookback(
-                prices, universe, rebal_date, custom_lookback[0], custom_lookback[1]
+                prices, universe, rebal_date, custom_lookback[0], custom_lookback[1],
+                weight_12=vix_blend[0], weight_6=vix_blend[1]
             )
         else:
             raw_return = config.get("raw_return", False)
+            # Get per-universe momentum blend (default 70/30)
+            blend = config.get("momentum_blend", (0.7, 0.3))
             # Custom base lookback (default 252/126)
             base_long = config.get("lookback_long", 252)
             base_short = config.get("lookback_short", 126)
             if base_long != 252 or base_short != 126:
                 # Non-standard lookback — compute live
                 scores = score_with_custom_lookback(
-                    prices, universe, rebal_date, base_long, base_short
+                    prices, universe, rebal_date, base_long, base_short,
+                    weight_12=blend[0], weight_6=blend[1]
                 )
             else:
-                scores = calculate_momentum_scores(prices, universe, cutoff_idx, raw_return=raw_return)
+                scores = calculate_momentum_scores(prices, universe, cutoff_idx,
+                                                   raw_return=raw_return,
+                                                   weight_12=blend[0], weight_6=blend[1])
 
         if scores.empty:
             portfolio_value += monthly_contribution

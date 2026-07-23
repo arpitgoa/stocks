@@ -11,7 +11,8 @@ from fetch_constituents import get_constituents
 from update_prices import PRICES_FILE
 
 
-def calculate_scores(prices, tickers, lookback_long=252, lookback_short=126, skip_days=5):
+def calculate_scores(prices, tickers, lookback_long=252, lookback_short=126, skip_days=5,
+                     weight_12=0.7, weight_6=0.3):
     """Calculate momentum scores for given tickers."""
     results = []
     for ticker in tickers:
@@ -46,7 +47,7 @@ def calculate_scores(prices, tickers, lookback_long=252, lookback_short=126, ski
     df = pd.DataFrame(results)
     df["Z_12"] = (df["MR_12"] - df["MR_12"].mean()) / df["MR_12"].std()
     df["Z_6"] = (df["MR_6"] - df["MR_6"].mean()) / df["MR_6"].std()
-    df["Weighted_Z"] = 0.5 * df["Z_12"] + 0.5 * df["Z_6"]
+    df["Weighted_Z"] = weight_12 * df["Z_12"] + weight_6 * df["Z_6"]
     df["Momentum_Score"] = df["Weighted_Z"].apply(lambda z: (1+z) if z >= 0 else 1/(1-z))
     df["Rank"] = df["Momentum_Score"].rank(ascending=False).astype(int)
     return df.sort_values("Momentum_Score", ascending=False).reset_index(drop=True)
@@ -107,10 +108,13 @@ def generate_signal(universe_name, prices, prev_holdings=None):
     if use_fast:
         lookback_long = config.get("vix_fast_long", 126)
         lookback_short = config.get("vix_fast_short", 42)
+        w12, w6 = 0.5, 0.5  # More responsive blend in panic
     else:
         lookback_long, lookback_short = 252, 126
+        w12, w6 = 0.7, 0.3  # Favor sustained trend in calm markets
     
-    scores = calculate_scores(prices, members, lookback_long, lookback_short)
+    scores = calculate_scores(prices, members, lookback_long, lookback_short,
+                              weight_12=w12, weight_6=w6)
     
     # Buffer logic
     new_portfolio = set()

@@ -29,6 +29,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$NDX",
         "gold_threshold": 7.0,
+        "momentum_blend": (0.7, 0.3),
         "notes": "Core strategy. 34.8% XIRR over 31 years. Best risk/reward.",
     },
     "nasdaq100_vix": {
@@ -45,7 +46,9 @@ UNIVERSE_CONFIGS = {
         "vix_threshold": 30,
         "vix_fast_long": 126,
         "vix_fast_short": 42,
-        "notes": "VIX>30 switches to 126d/42d lookback. 40% CAGR, -32.7% DD.",
+        "momentum_blend": (0.7, 0.3),
+        "vix_momentum_blend": (0.5, 0.5),
+        "notes": "VIX>30 switches to 126d/42d lookback with 50/50 blend. Default 70/30 blend. 43.9% CAGR, -26.9% DD.",
     },
     "nasdaq_q50": {
         "label": "NASDAQ Q-50 (ranks 101-150)",
@@ -58,6 +61,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$NDX",
         "gold_threshold": 7.0,
+        "momentum_blend": (0.7, 0.3),
         "notes": "Mid-cap NASDAQ. Uses NDX for gold signal (same ecosystem).",
     },
     "nasdaq_biotech": {
@@ -71,6 +75,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$NBI",
         "gold_threshold": 3.5,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Sector-specific. Uses NBI/XAUUSD for gold signal.",
     },
 
@@ -86,7 +91,8 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 15,
         "gold_signal_index": "$SPX",
         "gold_threshold": 2.2,
-        "notes": "Optimized: top 10, 10/15 buffer (tighter exit). 18.9% CAGR, -35% DD.",
+        "momentum_blend": (0.5, 0.5),
+        "notes": "Optimized: top 10, 10/15 buffer, 50/50 blend. 18.9% CAGR, -35% DD.",
     },
     "sp100": {
         "label": "S&P 100",
@@ -99,6 +105,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$OEX",
         "gold_threshold": 1.0,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Mega-caps. Optimized: 3/7, OEX/XAUUSD >= 1.0. 18.5% XIRR.",
     },
     "sp_midcap400": {
@@ -112,6 +119,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 10,
         "gold_signal_index": "$MID",
         "gold_threshold": 1.5,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Mid-caps. Optimized: 5/10, MID/XAUUSD >= 1.5. 22.4% XIRR.",
     },
     "sp_smallcap600": {
@@ -125,6 +133,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 20,
         "gold_signal_index": "$SML",
         "gold_threshold": 0.7,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Small-caps. Optimized: SML/XAUUSD >= 0.7. 16.8% XIRR.",
     },
 
@@ -140,6 +149,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$RUI",
         "gold_threshold": 2.4,
+        "momentum_blend": (0.7, 0.3),
         "notes": "Large-cap broad. Optimized: 3/7 beats 10/20. 26.3% XIRR.",
     },
     "russell2000": {
@@ -153,6 +163,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 25,
         "gold_signal_index": "$RUT",
         "gold_threshold": 1.6,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Small-caps. RUT/XAUUSD >= 1.6 for gold.",
     },
     "russell_midcap": {
@@ -166,6 +177,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 20,
         "gold_signal_index": "$RMC",
         "gold_threshold": 1.0,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Mid-cap. Optimized: RMC/XAUUSD >= 1.0. Best DD (-22.9%).",
     },
     "russell_top200": {
@@ -179,6 +191,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$RT200",
         "gold_threshold": 1.2,
+        "momentum_blend": (0.7, 0.3),
         "notes": "Mega-caps. Optimized: 3/7. 21.0% XIRR, -35.3% DD.",
     },
 
@@ -194,6 +207,7 @@ UNIVERSE_CONFIGS = {
         "exit_rank": 7,
         "gold_signal_index": "$DJI",
         "gold_threshold": 18.0,
+        "momentum_blend": (0.5, 0.5),
         "notes": "Only 30 stocks. Optimized: DJI/XAUUSD >= 18. 14.3% XIRR, -24.9% DD.",
     },
 }
