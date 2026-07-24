@@ -154,6 +154,9 @@
 
   // ─── Render ────────────────────────────────────────────────────────────────
   async function createLogoOverlay(ticker) {
+    // Guard: if ticker changed while we were resolving, abort
+    currentTicker = ticker;
+
     if (logoElement) {
       logoElement.remove();
       logoElement = null;
@@ -170,6 +173,8 @@
 
     const logoUrl = await getLogoUrl(ticker);
     if (!logoUrl) return;
+    // If ticker changed while fetching, don't render stale logo
+    if (currentTicker !== ticker) return;
 
     logoElement = document.createElement('img');
     logoElement.src = logoUrl;
