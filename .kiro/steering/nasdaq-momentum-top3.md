@@ -13,7 +13,7 @@ inclusion: auto
 - Interactive dashboard: `momentum_backtest_dashboard.html`
 - Strategy docs: `STRATEGY_README.md`
 
-## Core Strategy Parameters
+## Core Strategy Parameters (UPDATED July 2026)
 
 ### Stock Selection
 - **Universe:** NASDAQ-100 constituents (point-in-time, SCD2 membership from Norgate)
@@ -22,30 +22,43 @@ inclusion: auto
 - **Exit buffer:** Stock stays unless it drops below rank 7
 - **Weighting:** Equal weight (~33% each), reset monthly
 - **Rebalance:** Monthly (last trading day)
-- **Gold Rotation:** If NDX/XAUUSD ≥ 7.0, hold 100% gold (XAUUSD) instead of stocks
+- **Gold Rotation:** If NDX/XAUUSD ≥ 6.8, hold 100% gold (XAUUSD)
 
-### Momentum Score Calculation (NSE Methodology)
+### Momentum Score Calculation
 1. **12M return** (skip last 5 trading days): Price(end) / Price(252 days ago) - 1
 2. **6M return** (skip last 5 trading days): Price(end) / Price(126 days ago) - 1
 3. **Volatility (σ):** Annualized std dev of daily log returns over 252 days
 4. **Momentum Ratios:** MR_12 = 12M return / σ, MR_6 = 6M return / σ
-5. **Z-Scores:** Z_12 = (MR_12 - mean) / std, Z_6 = (MR_6 - mean) / std (across full universe)
-6. **Weighted Z:** 50% × Z_12 + 50% × Z_6
+5. **Z-Scores:** Z_12 = (MR_12 - mean) / std, Z_6 = (MR_6 - mean) / std
+6. **Weighted Z:** VIX < 30: **70% × Z_12 + 30% × Z_6** | VIX > 30: **50% × Z_12 + 50% × Z_6**
 7. **Normalized Score:** If Z ≥ 0 → (1+Z), else → (1-Z)⁻¹
 
-### Gold Rotation Signal
-- **Ratio:** NDX index price / XAUUSD (gold spot price)
-- **Threshold:** ≥ 7.0 → hold 100% gold
-- **Equivalent to:** QQQ/GLD ≥ 2.0 (correlation 0.9996 between the two ratios)
-- **Why 7.0:** Tested thresholds 6.0-9.0; 7.0 gives best CAGR (35.7%) while cutting dot-com drawdown from -74% to -47%
-- **Data:** NDX available from 1985, XAUUSD from 1982 — full backtest coverage from 1995
+### VIX-Adaptive Regime
+| VIX Zone | Lookback | Z-Score Blend (12M/6M) |
+|----------|----------|------------------------|
+| < 30 (normal) | 252d / 126d | 70 / 30 |
+| > 30 (panic) | 126d / 42d | 50 / 50 |
 
-### Results (1995–2026, 31.4 years, $100K + $1K/mo DCA)
-- **XIRR:** 33.8%
-- **Ending value:** $1.33B
-- **Multiple:** 2,776x on invested capital
-- **Max Drawdown:** -46.9% (GFC 2007-10 → 2009-06)
-- **Benchmark (NDX/QQQ):** 15.0% XIRR, 31.3x, -79.9% DD
+### Gold Rotation Signal
+- **Ratio:** NDX index price / XAUUSD
+- **Threshold:** ≥ 6.8 → hold 100% gold
+- **Tested range:** 6.0-8.5; 6.8 is optimal (triggers slightly earlier than 7.0, catches dot-com protection)
+
+### Per-Universe Config (`momentum_blend` in universe_config.py)
+- Each universe has its own optimal blend: NASDAQ-100/Russell 1000/Top 200 use 70/30, SP500/others use 50/50
+- `vix_momentum_blend` configures the VIX>30 fast-mode blend separately
+
+### Results (1995–2026, 31.5 years, $100K + $1K/mo DCA)
+- **XIRR:** 44.1%
+- **Max Drawdown:** -26.8%
+- **5-year rolling min CAGR:** +11.3%
+- **10-year rolling min CAGR:** +17.5%
+- **Win rate vs NDX:** 72% of years (23/32)
+
+### Results Without DCA (Lump Sum $100K, Jan 2015 → Jul 2026)
+- **CAGR:** 50.6%
+- **Max DD:** -24.1%
+- **Total return:** 11,016% (111x)
 
 ## Overlays
 
@@ -61,50 +74,92 @@ inclusion: auto
 - Exit: stock drops below rank 7 OR at 12-month expiry
 - Results: 51.3% CAGR, 17% win rate, 39:1 win/loss ratio
 
-## Filters & Ideas TESTED AND REJECTED
+## Filters & Ideas TESTED AND REJECTED (July 2026 Comprehensive)
 
 DO NOT re-test these. They have been thoroughly backtested and all make the strategy worse.
 
-### 1. Shooting Star / Candlestick Filters
-- **Test:** If previous month shows a shooting star pattern, skip entry
-- **Result:** 93% false positive rate. Only 7% of shooting stars are followed by big drops. 85% of the time the stock stays flat or goes green. Useless as a filter.
-- **Finding:** Shooting star pattern is real WITHIN crash months (87% of big drops have this shape) but does NOT appear the month BEFORE as an early warning.
+### Scoring & Blend Variations
+| Test | Result |
+|------|--------|
+| 3-factor scoring (12M/9M/6M) | Worse — noise dilutes signal |
+| 4-factor scoring (12M/9M/6M/3M) | Much worse |
+| Acceleration bonus (3M Z-score) | -4.5% CAGR, worse DD |
+| Vol penalty (penalize high-vol stocks) | -3.8% CAGR |
+| Recent winner boost (1M return bonus) | -5.9% CAGR |
+| Score-proportional weighting | -1.4% CAGR, worse DD |
+| Inverse volatility weighting | -5.5% CAGR, worse DD |
+| Conviction weighting (50/25/25) | -0.7% CAGR, worse DD |
 
-### 2. QQQ Momentum Score Gate
-- **Test:** Only hold stocks with momentum score higher than QQQ
-- **Result:** Never triggers. Top 3 stocks ALWAYS have higher momentum than QQQ (1.2x-10x higher). QQQ ranks ~30-60 in the universe. Meaningless filter.
+### Buffer & Position Variations
+| Test | Result |
+|------|--------|
+| Buffer 3/3 (no buffer) | -8% CAGR, -43% DD |
+| Buffer 3/5 | -4% CAGR, -37% DD |
+| Buffer 3/10 | -7% CAGR, -35% DD |
+| Entry rank 2 vs 3 vs 4 | No difference (all produce same portfolio) |
+| Hold 2 stocks | -8% CAGR, -42% DD |
+| Hold 4 stocks | -7% CAGR, -40% DD |
+| Hold 5 stocks | -12% CAGR, -46% DD |
 
-### 3. NDX Below 200 DMA → Hold NDX
-- **Test:** When NDX is below its 200-day moving average, hold NDX index instead of momentum stocks
-- **Result:** -3.3% CAGR (32.4% vs 35.7%), WORSE drawdown (-54% vs -47%), halved end value. Triggers 78 months (20% of time) — too often. Catches both crashes (good) AND corrections within uptrends (bad). Killed 2025-2026 where momentum stocks were up +173% but NDX briefly dipped below MA.
+### Timing & Rebalance Variations
+| Test | Result |
+|------|--------|
+| 6-month rebalance | -30% CAGR, -69% DD (destroys risk management) |
+| Drift weights (only reset semi-annually) | No difference from monthly equal weight |
+| Delayed entry (wait 1-5 days after big month) | All worse or same |
+| Entry at mid-month | Worse (misses first-day move) |
 
-### 4. Stop Loss on All Holdings (-4% Below Previous Month Low)
-- **Test:** If any held stock drops 4% below its previous month's low, sell it
-- **Result:** -8.5% CAGR (27.2% vs 35.7%), WORSE drawdown (-54% vs -47%). Triggered 136/311 stock months (44%). Momentum stocks are volatile — they routinely dip 4% below last month's low then continue higher. Incompatible with the strategy's DNA.
+### Stop Losses & Intra-Month Trading
+| Test | Result |
+|------|--------|
+| 3% stop loss with 3 re-entries | -18% CAGR, -50% DD (death by 1000 cuts) |
+| 5% stop loss | -8% CAGR |
+| Mid-month exit if stock down >7% | -6% CAGR |
+| Tournament: enter 5, keep best 3 after 5 days | -13% CAGR (first-week winners mean-revert) |
+| Tournament: 3→1 (keep only best after 5d) | -9% CAGR |
+| Drop worst after 3d, replace with #4 | -4% CAGR, much worse DD |
 
-### 5. Stop Loss on Entry Month Only (-4% Below Previous Month Low)
-- **Test:** Apply the -4% stop only in the first month of a new entry, not on existing holdings
-- **Result:** -1.7% CAGR (34.0% vs 35.7%), slightly worse DD (-48.7% vs -46.9%). Triggered 39 times. 85% of stops were "correct" (stock kept falling) but ONE missed recovery (PLTR +40.3% in Mar 2025) wiped out all savings from 39 good stops. Net negative because the avg stop saves only 0.3% but the avg false stop costs 10.4%.
+### Rate of Change / Momentum of Momentum
+| Test | Result |
+|------|--------|
+| Pure ROC (rank by score % change) | -23% CAGR |
+| Blended: 90% score + 10% ROC | -4.4% CAGR |
+| Top 10 → pick 3 by ROC within | -18% CAGR |
+| ROC filter (only pick improving stocks) | -11% CAGR |
+| Decay exit (kick stocks with falling scores) | -4 to -14% CAGR |
 
-### 6. Top 1 Stock (Buffer 1/5) with 1.8x Leverage
-- **Test:** Hold only the #1 ranked stock with buffer 1/5
-- **Result:** $7.9M (35x), 52% CAGR, -84% max DD. Catastrophically concentrated. Three bad years in a row at 1.8x (2018: -47%, 2019: -28%, 2021: -78%).
+### Volume-Based Signals
+| Test | Result |
+|------|--------|
+| Individual stock up/down volume ratio | No predictive power within top 10 (winners = losers on every metric) |
+| Stock volume vs 3M/6M average | No signal |
+| QQQ volume regime (high vs low) | Marginal difference, not exploitable |
+| Volume as entry filter or boost | All worse |
 
-### 7. Top 5 Stocks (Buffer 5/10) with 1.8x Leverage
-- **Test:** Hold top 5 with wider buffer
-- **Result:** $29.6M (131x), 72% CAGR, -41% DD. Better DD than top 3 but 5x less return. The extra diversification from stocks #4-5 costs massively on upside.
+### Macro Overlays
+| Test | Result |
+|------|--------|
+| NDX below 10-month MA → gold | -10% CAGR, worse DD |
+| NDX trend sizing (reduce when < 50MA) | -5% CAGR |
+| Calendar month filter (skip July/September) | -4 to -8% CAGR |
+| Realized vol switch (NDX vol > 30%) | Same or worse |
+| VIX < 15 → reduce exposure | -2% CAGR |
+| Breadth-based hedging (hold gold when broad market) | -2 to -5% CAGR |
 
-### 8. 3x Leverage
-- **Test:** 3x on all positions + gold
-- **Result:** $4.2B, 176% CAGR, -73% max DD. Fantasy numbers (3x single-stock ETFs don't exist). Worst month -42.5%.
+### Stock Selection Filters
+| Test | Result |
+|------|--------|
+| Absolute momentum filter (12M > 0) | -1.2% CAGR, worse DD |
+| 12M return cap (exclude >200% gainers) | -17% CAGR (kills the engine) |
+| Relative strength vs NDX filter | -8% CAGR |
+| Trend filter (stock must be > 50MA) | -12% CAGR |
+| Anti-correlation diversification | -7% CAGR, -51% DD |
+| Breakout swap (rank 4-10 with high 1M into portfolio) | -2 to -10% CAGR |
 
-### 9. Tiered Gold Rotation (≥7 → 50/50, ≥9 → 100% gold)
-- **Test:** Partial gold allocation in the 7-9 zone
-- **Result:** $1.54B vs $1.50B — negligible difference (+0.1% CAGR). Not worth the execution complexity of maintaining two positions.
-
-### 10. Previous Month Candle Size as Entry Filter
-- **Test:** Filter entries based on previous month's candle range (high-to-low)
-- **Result:** OPPOSITE of expected. Larger candles (30-50% range) have 79% win rate and +12.1% avg return. Smaller candles (10-15%) have 56% win rate. Big candles = strong trend = better entries. No useful filter.
+### Why the 198% Ceiling Can't Be Reached with Price Data
+- Winners and losers within top 10 are **statistically identical** on: candle size, volume ratio, volatility, distance from high, 5d/10d momentum, gap frequency, close position in range, up/down volume ratio
+- The difference is driven by **future unpredictable events**: earnings surprises, analyst revisions, news, sector rotation, institutional flow
+- To close the gap, would need: earnings revision data, options flow, insider buying, or ML on fundamentals
 
 ## Underperformance Patterns (Known, Accepted)
 
@@ -119,15 +174,45 @@ These are structural costs of concentrated momentum. Cannot be filtered without 
 
 ## Key Design Decisions (Confirmed by 31-Year Backtest)
 1. **Concentration wins:** Top 3 beats top 5/10/20 by wide margin at every leverage level
-2. **Buffer 3/7 is optimal:** 3/3 too much churn, 3/10 similar to 3/7, wider adds no value
-3. **Monthly rebalance:** Weekly too noisy, quarterly too slow
-4. **12M/6M lookback is optimal:** Shorter is noisy, longer is too slow
-5. **NSE vol adjustment works:** Battle-tested methodology
-6. **NDX/XAUUSD ≥ 7.0 → gold** is the ONLY valid macro filter
-7. **No stock-level stop losses work:** Momentum stocks are too volatile for price-based exits
-8. **Buffer logic handles bad entries:** If a stock enters and immediately fails, it drops in rank and exits at next rebalance — no stop needed
-9. **The strategy's edge comes from letting winners run through volatility**
-10. **Bad years (8 of 31) are the structural cost of crushing in 18 of 31 years**
+2. **Buffer 3/7 is optimal:** 3/3 too much churn (-43% DD), 3/5 too tight, 3/10 too wide
+3. **Monthly rebalance:** Weekly too noisy, 6-monthly destroys risk management (-69% DD)
+4. **70/30 blend is optimal for calm markets:** Favors sustained 12M trend, avoids whipsaw
+5. **50/50 blend for VIX>30:** More responsive during panic to catch rotation
+6. **NSE vol adjustment works:** Battle-tested methodology
+7. **NDX/XAUUSD ≥ 6.8 → gold** is the ONLY valid macro filter
+8. **Skip 5 trading days is exactly optimal:** Not 3, not 7 — precise sweet spot
+9. **3 stocks is the magic number:** 2 stocks too volatile, 4-5 stocks too diluted
+10. **Equal weight beats all alternatives** (conviction weighting, score-proportional, inverse vol)
+11. **No stock-level stop losses work:** Momentum stocks are too volatile for price-based exits
+12. **Buffer logic handles bad entries:** If a stock enters and immediately fails, it drops in rank and exits at next rebalance
+13. **Bad years (8-9 of 32) are the structural cost of crushing in 23 of 32 years**
+
+## Optimization Research (July 2026 — Comprehensive)
+
+### What Improved the Strategy (IMPLEMENTED)
+| Change | Impact | Implemented |
+|--------|--------|-------------|
+| 70/30 Z-score blend (from 50/50) | +2.7% CAGR, -5.8% DD | ✅ |
+| Gold threshold 6.8 (from 7.0) | +1.5% CAGR, same DD | ✅ |
+| Per-universe `momentum_blend` config | Each universe at its optimal | ✅ |
+| SP500 buffer 10/15 (from 10/20) | +0.9% CAGR, same DD | ✅ |
+| yfinance→Norgate column rename fix | Data pipeline fix | ✅ |
+| Weekend/current-day download skip | Rate limit protection | ✅ |
+| Dynamic "Top N" label in dashboard | Fixes misleading "Top 7" | ✅ |
+
+### Theoretical Maximum (Perfect Hindsight Analysis)
+- **Best 3 out of top 10 (backward-looking):** 198.7% CAGR, -13.7% DD
+- **Our picks (top 3 by score):** ~44% CAGR
+- **Random 3 from top 10:** 25.1% CAGR
+- **Worst 3 from top 10:** -1.9% CAGR
+- **Conclusion:** Scoring correctly identifies the top-10 pool (huge value vs random). Within-top-10 selection is driven by unpredictable future events (earnings, news, flow). No observable price/volume characteristic at entry differentiates winners from losers within the top 10.
+
+### Saved for Future Consideration (Not Implemented)
+| Idea | Result | Why Not |
+|------|--------|---------|
+| Hybrid gold signal (MA-trend + crash trigger) | 49-50% CAGR, -27.5% DD | Backward-looking, fit to 3 events. Risk of -40% DD if 2000-like event occurs with rising ratio |
+| Drop worst stock after 3 days | 46.8% CAGR, -37% DD | +1.4% CAGR but +10% worse DD — not worth the tradeoff |
+| Breadth-based hedging | Insight valid, not exploitable | Narrow breadth = +5.4%/mo vs broad = +3.8%/mo, but hedging during broad costs more than it saves |
 
 ## Data Architecture
 | File/Location | Purpose |
@@ -142,15 +227,40 @@ These are structural costs of concentrated momentum. Cannot be filtered without 
 | `nasdaq_momentum/leveraged_config.py` | Leveraged ETF ticker mapping |
 | `nasdaq_momentum/backtest_wide_holdings.csv` | Full backtest output (378 months) |
 
-## Scripts
+## Scripts (Current Architecture)
 | File | Purpose |
 |------|---------|
-| `backtest.py` | Main backtest engine (uses Norgate data, starts 1995) |
-| `load_norgate_data.py` | Data loader for Norgate prices + SCD2 membership |
-| `generate_html.py` | Generates interactive dashboard |
-| `download_data.py` | yfinance download for leveraged ETFs |
+| `run_backtest.py` | CLI wrapper — runs backtest for any universe |
+| `live_signal.py` | Updates prices from yfinance + generates live signals for all universes |
+| `generate_dashboard.py` | Generates interactive HTML dashboard from backtest CSV |
+| `universe_config.py` | All universe parameters (top_n, buffer, gold, blend) |
 | `leveraged_config.py` | Leveraged ETF ticker mapping |
-| `nasdaq_momentum50_screener.py` | Screener for top 50 momentum |
+| `dashboard_template.py` | HTML template for dashboards |
+| `core/engine.py` | Main backtest loop (gold, VIX, buffer, scoring) |
+| `core/momentum.py` | Momentum scoring (Z-scores, normalization, precomputed cache) |
+| `core/data_loader.py` | Loads prices from parquet/CSV + membership |
+| `core/metrics.py` | XIRR, max drawdown calculations |
+| `scripts/test_strategy.py` | Parameter sweep testing tool with rolling returns |
+| `scripts/build_prices_parquet.py` | Builds all_prices.parquet from Norgate CSVs |
+| `scripts/build_comparison_dashboard.py` | ETF comparison dashboard |
+| `github_action/generate_signals.py` | GitHub Actions signal pipeline |
+| `github_action/send_telegram.py` | Telegram notification |
+
+## Key Commands
+```bash
+# Run full refresh (update prices + all backtests + all dashboards)
+python live_signal.py --all --dashboard
+
+# Run single universe backtest
+python run_backtest.py --universe nasdaq100_vix --dashboard
+
+# Test parameters before committing
+python scripts/test_strategy.py --universe nasdaq100_vix
+python scripts/test_strategy.py --universe nasdaq100_vix --period 2015-2026
+
+# List all universes
+python run_backtest.py --list
+```
 
 ## Current Holdings (July 2026)
 - **Stocks:** MU, STX, WDC
