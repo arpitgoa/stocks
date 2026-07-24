@@ -4,11 +4,13 @@ Leverage Rule Checker
 Checks if any of the 4 leverage rules are triggered this month.
 Uses a state file (data/prev_signals.json) to track previous months.
 
-Rules (NASDAQ-100 VIX Optimized only):
-  1. Exit gold → re-enter stocks: 2x (100% win rate)
-  2. >10% prev month + month before that green: 2x (78% win rate)
-  3. Two consecutive >10% months + QQQ > 200 DMA: 2x (92% win rate)
-  4. After a -10% month: 2x (75% win rate, improves MaxDD)
+Rules (NASDAQ-100 VIX Optimized only, with 70/30 blend):
+  1. Exit gold → re-enter stocks: 2x (100% win rate, 7/7)
+  2. >10% prev month + month before that green: 2x (67% win rate, 14/21)
+  3. Two consecutive >10% months + QQQ > 200 DMA: 2x (73% win rate, 11/15)
+  4. After a -10% month: 2x (75% win rate, 12/16)
+
+Combined: 58.0% CAGR / -32.1% MaxDD (vs base 44.1% / -26.8%)
 """
 
 import json
@@ -57,9 +59,9 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
         triggered.append({
             "rule": 1,
             "name": "Gold Exit → Stocks",
-            "action": "2x this month",
-            "confidence": "100% (7/7)",
-            "detail": "Strategy exited gold and re-entering stocks. First month back is always positive historically.",
+            "action": "🟢 GO 2x THIS MONTH",
+            "confidence": "100% (7/7), avg +13.8%",
+            "detail": "Strategy exited gold and re-entering stocks. First month back ALWAYS positive historically.",
         })
     
     # Rule 2: >10% prev month + month before green
@@ -68,9 +70,9 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
             triggered.append({
                 "rule": 2,
                 "name": ">10% + Prev Green",
-                "action": "2x this month",
-                "confidence": "78% (29/37)",
-                "detail": f"Last month: {prev_return:+.1f}%, month before: {prev_prev_return:+.1f}%. Momentum confirmed.",
+                "action": "🟡 CONSIDER 2x (67% win rate)",
+                "confidence": "67% (14/21), avg +4.3%",
+                "detail": f"Last month: {prev_return:+.1f}%, month before: {prev_prev_return:+.1f}%. Momentum confirmed but lower confidence.",
             })
     
     # Rule 3: Two consecutive >10% months
@@ -79,9 +81,9 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
             triggered.append({
                 "rule": 3,
                 "name": "Two >10% Months",
-                "action": "2x this month",
-                "confidence": "92% (12/13)",
-                "detail": f"Last 2 months: {prev_prev_return:+.1f}%, {prev_return:+.1f}%. Epic run confirmed.",
+                "action": "🟢 GO 2x THIS MONTH",
+                "confidence": "73% (11/15), avg +7.0%",
+                "detail": f"Last 2 months: {prev_prev_return:+.1f}%, {prev_return:+.1f}%. Epic run — high conviction.",
             })
     
     # Rule 4: After a -10% month
@@ -89,8 +91,8 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
         triggered.append({
             "rule": 4,
             "name": "Mean Reversion (-10%)",
-            "action": "2x this month",
-            "confidence": "75% (12/16)",
+            "action": "🟢 GO 2x THIS MONTH",
+            "confidence": "75% (12/16), avg +7.7%",
             "detail": f"Last month: {prev_return:+.1f}%. Panic washout — bounce expected.",
         })
     
@@ -100,22 +102,23 @@ def check_leverage_rules(signals, ndx_price=None, ndx_200dma=None):
 def format_leverage_alerts(triggered_rules):
     """Format leverage alerts for Telegram message."""
     if not triggered_rules:
-        return ""
+        return "\n🔕 No leverage rules triggered this month.\n"
     
     lines = [
         "",
         "━━━━━━━━━━━━━━━━━━━━━━",
-        "⚡ <b>LEVERAGE SIGNALS</b>",
+        f"⚡ <b>LEVERAGE ALERT — {len(triggered_rules)} RULE{'S' if len(triggered_rules) > 1 else ''} TRIGGERED</b>",
         "",
     ]
     
     for rule in triggered_rules:
-        lines.append(f"⚡ <b>Rule {rule['rule']}: {rule['name']}</b>")
-        lines.append(f"     Action: {rule['action']}")
-        lines.append(f"     Confidence: {rule['confidence']}")
+        lines.append(f"  ⚡ <b>Rule {rule['rule']}: {rule['name']}</b>")
+        lines.append(f"     → {rule['action']}")
+        lines.append(f"     Win rate: {rule['confidence']}")
         lines.append(f"     {rule['detail']}")
         lines.append("")
     
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━")
     return "\n".join(lines)
 
 
