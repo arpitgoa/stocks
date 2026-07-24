@@ -14,8 +14,9 @@
 
   // ─── Config ──────────────────────────────────────────────────────────────────
   // CHANGE THIS to your GitHub username/repo after pushing:
-  const GITHUB_REPO = 'ajhanwa/stock-logos';
+  const GITHUB_REPO = 'arpitgoa/stocks';
   const GITHUB_BRANCH = 'main';
+  const GITHUB_PATH = 'stock-logos/logos';
 
   const LOGO_DEV_TOKEN = 'pk_YWcpl2HqTTyigO9G_HrRWA';
 
@@ -71,7 +72,7 @@
   // ─── Logo Resolution (3-tier: GitHub → IndexedDB → API) ───────────────────
   async function getLogoUrl(ticker) {
     // Tier 1: GitHub repo (portable across devices, free CDN)
-    const githubUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/logos/${ticker}.png`;
+    const githubUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_PATH}/${ticker}.png`;
     try {
       const resp = await fetch(githubUrl, { method: 'HEAD' });
       if (resp.ok) {
